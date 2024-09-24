@@ -16,7 +16,7 @@ class DatasetsConfig:
         self.dataset_path = self.badiu_netdisk_path / "DiffusionDream_Dataset"
         self.current_processing_bvid = ""
         #self.csv_path = self.badiu_netdisk_path / 'DiffusionDream_CSV' 
-        self.csv_path = self.project_path.parent / 'autodl-tmp'
+        self.csv_path = self.project_path.parent / 'autodl-tmp' / 'tmp_csv'
         self.csv_file = os.path.join(self.csv_path, 'diffusiondream.csv')
         self.current_processing_keyword = ""
 

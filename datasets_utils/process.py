@@ -6,7 +6,17 @@ from pose.estimation import camera_pose_estimation
 from calculate import calculate_mouse_movement
 #import base64
 from tqdm import tqdm
+import os
+import time
 
+#def create_csv_file():
+
+'''
+def detect_tmp_csv():
+    if len(list(datasset_config.csv_path.iterdir())) == 0:
+'''
+
+    
 
 def image_to_binary(image_path):
     with open(image_path, 'rb') as image_file:
@@ -40,6 +50,13 @@ def process_slices():
         for image in images_list:
             image.unlink()
         return
+    
+    if os.path.getsize(datasset_config.csv_file) >= 10737418240 :
+        print("too large size csv")
+        for image in images_list:
+            image.unlink()
+        os._exit()
+        
 
     for i in tqdm(range(10,len(images_list)),desc="Processing"):
         pose = camera_pose_estimation(images_list[i-1],images_list[i])
