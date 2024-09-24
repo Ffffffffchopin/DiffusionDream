@@ -69,6 +69,6 @@ def search_bilibili(keyword, max_page):
     return ret
 
 if __name__ == "__main__":
-    search_keyword = '霓虹'
-    max_page = 2
+    search_keyword = '瓦罗兰特'
+    max_page = 10
     print(search_bilibili(search_keyword, max_page))
