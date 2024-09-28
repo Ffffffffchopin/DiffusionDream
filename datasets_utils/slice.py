@@ -14,6 +14,7 @@ def slice_video(bvid):
     with open(datasset_config.txt_path, 'r') as file:
             processed_ids = set(line.strip() for line in file)
             if bvid in processed_ids:
+                print("This bvid has been processed")
                 return
     ffmpeg.input(in_file).filter('fps', fps=10).output(out_file).run()
     if in_file.exists() and in_file.is_file():
