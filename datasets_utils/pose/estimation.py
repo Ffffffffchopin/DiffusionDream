@@ -11,9 +11,9 @@ import os
 from lib.models.builder import build_model
 from lib.datasets.utils import read_color_image, correct_intrinsic_scale
 
-sys.path.append("third_party/LoFTR")
-sys.path.append("etc/feature_matching_baselines")
-sys.path.append("third_party/prior_ransac")
+#sys.path.append("third_party/LoFTR")
+#sys.path.append("etc/feature_matching_baselines")
+#sys.path.append("third_party/prior_ransac")
 
 
 
@@ -89,9 +89,9 @@ def eval(args):
     model = build_model(cfg, args.checkpoint, use_loftr_preds=args.use_loftr_preds, use_superglue_preds=args.use_superglue_preds, args=args) 
 
     im1_path = Path(args.img_path0)
-    print(im1_path)
+    #print(im1_path)
     im2_path = Path(args.img_path1)
-    print(im2_path)
+    #print(im2_path)
     image0_reg = read_color_image(im1_path, resize).unsqueeze(0)
     image1_reg = read_color_image(im2_path, resize).unsqueeze(0)
     image0, w0, h0 = read_image(im1_path, resize_matcher)
@@ -144,6 +144,9 @@ def camera_pose_estimation(img_path0, img_path1):
 
 if __name__ == '__main__':
     os.chdir(current_directory)
+    sys.path.append("third_party/LoFTR")
+    sys.path.append("etc/feature_matching_baselines")
+    sys.path.append("third_party/prior_ransac")
     #print(os.getcwd())
     #print(os.path.exists('./test_images/s00476_00000.jpg'))
     print(camera_pose_estimation('test_images/s00476_00000.jpg','test_images/s00476_00540.jpg'))

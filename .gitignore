@@ -18,9 +18,9 @@ datasets_utils/tmp/
 
 **/*.png
 
-**/*.txt
+#**/*.txt
 
-**/*.json
+#**/*.json
 
 **/*.csv
 

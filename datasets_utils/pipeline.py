@@ -1,7 +1,7 @@
 from search import search_bilibili
 from slice import slice_video
 from process import process_slices
-from datasets_utils.config import datasset_config
+from datasets_config import datasset_config
 
 def pipeline(keyword,max_page):
     bvids = search_bilibili(keyword, max_page)

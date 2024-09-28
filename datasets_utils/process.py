@@ -1,8 +1,8 @@
 #from slice import slice_video
 #from pathlib import Path as path
-from datasets_utils.config import datasset_config
+from datasets_config import datasset_config
 import pandas as pd
-from pose.estimation import camera_pose_estimation
+
 from calculate import calculate_mouse_movement
 #import base64
 from tqdm import tqdm
@@ -11,6 +11,29 @@ import pyarrow.parquet as pq
 import pyarrow as pa
 #from fastparquet import write
 #from fastparquet import ParquetFile
+import time
+from bypy import ByPy
+import sys
+
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),'pose'))
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),'pose','third_party','LoFTR'))
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),'pose','etc','feature_matching_baselines'))
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),'pose','third_party','prior_ransac'))
+
+from pose.estimation import camera_pose_estimation
+
+def create_unique_filename( extension='parquet'):
+
+    # 获取当前时间
+    current_time = time.localtime()
+    
+    # 格式化时间为 YYYYMMDD_HHMMSS 格式
+    formatted_time = time.strftime('%Y%m%d_%H%M%S', current_time)
+    
+    # 构建文件名
+    filename = f"{formatted_time}.{extension}"
+    
+    return filename
 
 
 def image_to_binary(image_path):
@@ -46,14 +69,13 @@ def process_slices():
             image.unlink()
         return
 
-    if os.path.getsize(datasset_config.csv_file) >= 10737418240 :
-        print("too large size csv")
-        for image in images_list:
-            image.unlink()
-        os._exit()
 
+    writer=None
     for i in tqdm(range(10,len(images_list)),desc="Processing"):
+        orginal_directory = os.getcwd()
+        os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)),'pose')) 
         pose = camera_pose_estimation(images_list[i-1],images_list[i])
+        os.chdir(orginal_directory)
         #print(pose)
         R = pose[:3,:3]
         dx, dy =calculate_mouse_movement(R)
@@ -64,11 +86,37 @@ def process_slices():
         new_line = {'info':datasset_config.current_processing_bvid,'keyword':datasset_config.current_processing_keyword, 'action':action,'previous_frame_1':image_to_binary(images_list[i-10]),'previous_frame_2':image_to_binary(images_list[i-9]),'previous_frame_3':image_to_binary(images_list[i-8]),'previous_frame_4':image_to_binary(images_list[i-7]),'previous_frame_5':image_to_binary(images_list[i-6]),'previous_frame_6':image_to_binary(images_list[i-5]),'previous_frame_7':image_to_binary(images_list[i-4]),'previous_frame_8':image_to_binary(images_list[i-3]),'previous_frame_9':image_to_binary(images_list[i-2]),'previous_frame_10':image_to_binary(images_list[i-1]),
         'current_frame':image_to_binary(images_list[i])}
         new_df = pd.DataFrame([new_line])
-        new_df.to_csv(datasset_config.csv_file, mode='a', header=False, index=False
-        )
+        #new_df.to_csv(datasset_config.csv_file, mode='a', header=False, index=False)
+        table = pa.Table.from_pandas(new_df)
+        parquet_files = list(datasset_config.parquet_path.iterdir())
+        if len(parquet_files)==0:
+            filename=create_unique_filename()
+            #pq.write_table(table,os.path.join(datasset_config.parquet_path,filename))
+            writer = pq.ParquetWriter(os.path.join(datasset_config.parquet_path,filename), table.schema)
+            writer.write_table(table=table)
+            parquet_files.append(os.path.join(datasset_config.parquet_path,filename))
+            
+        else:
+            writer.write_table(table=table)
+            #writer.close()
+        if os.path.getsize(parquet_files[0]) >= 10737418240:
+            print("too large size parquet and push to baiduyun")
+            bp = ByPy()
+            bp.upload(parquet_files[0], 'tmp_parquets')
+            os.remove(parquet_files[0])
+            for image in images_list:
+                image.unlink()
+            writer.close()
+            
+            
+        
     print(f'{datasset_config.current_processing_bvid} is done')
+    with open(datasset_config.txt_path, 'w') as f:
+        f.write(f'{datasset_config.current_processing_bvid}\n')
     for image in images_list:
         image.unlink()
+    writer.close()
 
 if __name__ == "__main__":
     process_slices()
+    #print(sys.path)

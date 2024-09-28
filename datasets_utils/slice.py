@@ -1,7 +1,7 @@
 import ffmpeg
 #from search import search_bilibili
 from download import download_bilibili_with_bvid
-from datasets_utils.config import datasset_config
+from datasets_config import datasset_config
 import os
 
 
@@ -11,6 +11,10 @@ def slice_video(bvid):
     in_file = list(datasset_config.video_out_dir.iterdir())[0]
     out_file = os.path.join(datasset_config.image_out_dir, '%04d.jpg')
     datasset_config.current_processing_bvid = bvid
+    with open(datasset_config.txt_path, 'r') as file:
+            processed_ids = set(line.strip() for line in file)
+            if bvid in processed_ids:
+                return
     ffmpeg.input(in_file).filter('fps', fps=10).output(out_file).run()
     if in_file.exists() and in_file.is_file():
         in_file.unlink()
