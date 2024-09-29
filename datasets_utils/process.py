@@ -63,7 +63,7 @@ def process_slices():
             image.unlink()
         return
     
-    if len(images_list)>=3000:
+    if len(images_list)>=6000:
         print('Too many images to process')
         for image in images_list:
             image.unlink()
@@ -111,8 +111,7 @@ def process_slices():
             
         
     print(f'{datasset_config.current_processing_bvid} is done')
-    with open(datasset_config.txt_path, 'w') as f:
-        f.write(f'{datasset_config.current_processing_bvid}\n')
+
     for image in images_list:
         image.unlink()
     writer.close()
