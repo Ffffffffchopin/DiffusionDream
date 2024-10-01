@@ -86,8 +86,8 @@ def process_slices():
         ty = pose[1,-1]
         tz = pose[2,-1]
         action=f'tx:{tx},ty:{ty},tz{tz},dx:{dx:.4f},dy:{dy:.4f}'
-        new_line = {'info':datasset_config.current_processing_bvid,'keyword':datasset_config.current_processing_keyword, 'action':action,'previous_frame_1':image_to_binary(images_list[i-10]),'previous_frame_2':image_to_binary(images_list[i-9]),'previous_frame_3':image_to_binary(images_list[i-8]),'previous_frame_4':image_to_binary(images_list[i-7]),'previous_frame_5':image_to_binary(images_list[i-6]),'previous_frame_6':image_to_binary(images_list[i-5]),'previous_frame_7':image_to_binary(images_list[i-4]),'previous_frame_8':image_to_binary(images_list[i-3]),'previous_frame_9':image_to_binary(images_list[i-2]),'previous_frame_10':image_to_binary(images_list[i-1]),
-        'current_frame':image_to_binary(images_list[i])}
+        new_line = {'info':datasset_config.current_processing_bvid,'keyword':datasset_config.current_processing_keyword, 'action':action,'current_frame':image_to_binary(images_list[i]),'previous_frame_1':image_to_binary(images_list[i-1]),'previous_frame_2':image_to_binary(images_list[i-2]),'previous_frame_3':image_to_binary(images_list[i-3]),'previous_frame_4':image_to_binary(images_list[i-4]),'previous_frame_5':image_to_binary(images_list[i-5]),'previous_frame_6':image_to_binary(images_list[i-6]),'previous_frame_7':image_to_binary(images_list[i-7]),'previous_frame_8':image_to_binary(images_list[i-8]),'previous_frame_9':image_to_binary(images_list[i-9]),'previous_frame_10':image_to_binary(images_list[i-10])
+        }
         new_df = pd.DataFrame([new_line])
         #new_df.to_csv(datasset_config.csv_file, mode='a', header=False, index=False)
         table = pa.Table.from_pandas(new_df)
