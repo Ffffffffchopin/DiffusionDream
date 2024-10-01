@@ -27,3 +27,5 @@ datasets_utils/tmp/
 **/*.jpg
 
 **/*.parquet
+
+.idea/
