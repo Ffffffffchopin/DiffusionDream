@@ -29,3 +29,5 @@ datasets_utils/tmp/
 **/*.parquet
 
 .idea/
+
+model/
