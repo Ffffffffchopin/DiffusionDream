@@ -40,3 +40,5 @@ datasets_utils/pose/etc/feature_matching_baselines/SuperGlue/models/weights/
 
 datasets_utils/pose/pretrained_models/
 
+**/*ipynb**
+
