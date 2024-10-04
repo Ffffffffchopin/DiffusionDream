@@ -181,11 +181,11 @@ def parse_args():
     parser.add_argument(
         "--val_image_url",
         type=str,
-        default="https://cn.bing.com/images/search?view=detailV2&ccid=jQz0UrLl&id=0EC9B166824140F5FAA8F08482E2BC3110407D70&thid=OIP.jQz0UrLlweYj_MyC6PZwqQHaEK&mediaurl=https%3a%2f%2fwww.esport.nl%2fwp-content%2fuploads%2f2018%2f04%2fcsgo1.jpg&exph=1080&expw=1920&q=csgo&simid=608023308199019420&FORM=IRPRST&ck=A51F6231D3C59611D5A6B93069FD7CE4&selectedIndex=27&itb=0",
+        default="https://bkimg.cdn.bcebos.com/pic/71cf3bc79f3df8dc87e8d055cf11728b46102818?x-bce-process=image/format,f_auto/resize,m_lfit,limit_1,h_336",
         help="URL to the original image that you would like to edit (used during inference for debugging purposes).",
     )
     parser.add_argument(
-        "--validation_prompt", type=str, default='tx:0.0215000007301569,ty:0.006500000134110451,tz:-0.02969999983906746,dx:0.0020,dy:-0.0023', help="A prompt that is sampled during training for inference."
+        "--validation_prompt", type=str, default='tx:0.0215,ty:0.0065,tz:-0.0297,dx:0.0020,dy:-0.0023', help="A prompt that is sampled during training for inference."
     )
     parser.add_argument(
         "--num_validation_images",
@@ -196,7 +196,7 @@ def parse_args():
     parser.add_argument(
         "--validation_epochs",
         type=int,
-        default=1,
+        default=5,
         help=(
             "Run fine-tuning validation every X epochs. The validation process consists of running the prompt"
             " `args.validation_prompt` multiple times: `args.num_validation_images`."
@@ -214,7 +214,7 @@ def parse_args():
     parser.add_argument(
         "--output_dir",
         type=str,
-        default="model/instruct_pix2pix",
+        default="/root/autodl-tmp/model/instruct_pix2pix",
         help="The output directory where the model predictions and checkpoints will be written.",
     )
     parser.add_argument(
@@ -250,7 +250,7 @@ def parse_args():
     parser.add_argument(
         "--train_batch_size", type=int, default=16, help="Batch size (per device) for the training dataloader."
     )
-    parser.add_argument("--num_train_epochs", type=int, default=100)
+    parser.add_argument("--num_train_epochs", type=int, default=10)
     parser.add_argument(
         "--max_train_steps",
         type=int,
@@ -333,7 +333,7 @@ def parse_args():
     parser.add_argument("--adam_weight_decay", type=float, default=1e-2, help="Weight decay to use.")
     parser.add_argument("--adam_epsilon", type=float, default=1e-08, help="Epsilon value for the Adam optimizer")
     parser.add_argument("--max_grad_norm", default=1.0, type=float, help="Max gradient norm.")
-    parser.add_argument("--push_to_hub", action="store_true", help="Whether or not to push the model to the Hub.")
+    parser.add_argument("--push_to_hub", action="store_true", help="Whether or not to push the model to the Hub.",default=True)
     parser.add_argument("--hub_token", type=str, default=None, help="The token to use to push to the Model Hub.")
     parser.add_argument(
         "--hub_model_id",
@@ -374,7 +374,7 @@ def parse_args():
     parser.add_argument(
         "--checkpointing_steps",
         type=int,
-        default=100,
+        default=500,
         help=(
             "Save a checkpoint of the training state every X updates. These checkpoints are only suitable for resuming"
             " training using `--resume_from_checkpoint`."
