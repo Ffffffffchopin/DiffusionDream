@@ -64,7 +64,7 @@ logger = get_logger(__name__, log_level="INFO")
 DATASET_NAME_MAPPING = {
     "fffffchopin/DiffusionDream_Dataset": ("previous_frame1", "action", "current_frame"),
 }
-WANDB_TABLE_COL_NAMES = ["original_image", "edited_image", "edit_prompt"]
+WANDB_TABLE_COL_NAMES = ["previous_frame1", "current_frame", "action"]
 
 
 def log_validation(
@@ -107,6 +107,9 @@ def log_validation(
             for edited_image in edited_images:
                 wandb_table.add_data(wandb.Image(original_image), wandb.Image(edited_image), args.validation_prompt)
             tracker.log({"validation": wandb_table})
+        elif tracker.name == "tensorboard":
+            np_images = np.stack([np.asarray(img) for img in edited_images])
+            tracker.writer.add_images("validation", np_images)
 
 
 def parse_args():
@@ -178,11 +181,11 @@ def parse_args():
     parser.add_argument(
         "--val_image_url",
         type=str,
-        default=None,
+        default="https://cn.bing.com/images/search?view=detailV2&ccid=jQz0UrLl&id=0EC9B166824140F5FAA8F08482E2BC3110407D70&thid=OIP.jQz0UrLlweYj_MyC6PZwqQHaEK&mediaurl=https%3a%2f%2fwww.esport.nl%2fwp-content%2fuploads%2f2018%2f04%2fcsgo1.jpg&exph=1080&expw=1920&q=csgo&simid=608023308199019420&FORM=IRPRST&ck=A51F6231D3C59611D5A6B93069FD7CE4&selectedIndex=27&itb=0",
         help="URL to the original image that you would like to edit (used during inference for debugging purposes).",
     )
     parser.add_argument(
-        "--validation_prompt", type=str, default=None, help="A prompt that is sampled during training for inference."
+        "--validation_prompt", type=str, default='tx:0.0215000007301569,ty:0.006500000134110451,tz:-0.02969999983906746,dx:0.0020,dy:-0.0023', help="A prompt that is sampled during training for inference."
     )
     parser.add_argument(
         "--num_validation_images",
@@ -361,7 +364,7 @@ def parse_args():
     parser.add_argument(
         "--report_to",
         type=str,
-        default="tensorboard",
+        default="wandb",
         help=(
             'The integration to report the results and logs to. Supported platforms are `"tensorboard"`'
             ' (default), `"wandb"` and `"comet_ml"`. Use `"all"` to report to all integrations.'
@@ -371,7 +374,7 @@ def parse_args():
     parser.add_argument(
         "--checkpointing_steps",
         type=int,
-        default=500,
+        default=100,
         help=(
             "Save a checkpoint of the training state every X updates. These checkpoints are only suitable for resuming"
             " training using `--resume_from_checkpoint`."
@@ -386,7 +389,7 @@ def parse_args():
     parser.add_argument(
         "--resume_from_checkpoint",
         type=str,
-        default=None,
+        default='latest',
         help=(
             "Whether training should be resumed from a previous checkpoint. Use a path saved by"
             ' `--checkpointing_steps`, or `"latest"` to automatically select the last available checkpoint.'
@@ -525,7 +528,6 @@ def main():
                                 unet.conv_in.kernel_size, unet.conv_in.stride,
                                 unet.conv_in.padding)
         new_conv_in.weight.zero_()
-        #TODO solve error
         print(f"new_conv_in:{new_conv_in.weight[:,:4,:,:].shape},unet:{unet.conv_in.weight.shape}")
         new_conv_in.weight[:, :4, :, :].copy_(unet.conv_in.weight)
         unet.conv_in = new_conv_in
