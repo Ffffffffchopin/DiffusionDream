@@ -1,0 +1,14 @@
+{
+	"files": [
+		{
+			"path": "train/train_instruct_pix2pix.py",
+			"bookmarks": [
+				{
+					"line": 701,
+					"column": 4,
+					"label": "动作序列处理方法"
+				}
+			]
+		}
+	]
+}

@@ -30,7 +30,7 @@ import numpy as np
 import PIL
 import requests
 import torch
-import torch.nn as nn
+#import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.checkpoint
 import transformers
@@ -45,12 +45,13 @@ from tqdm.auto import tqdm
 from transformers import CLIPTextModel, CLIPTokenizer
 
 import diffusers
-from diffusers import AutoencoderKL, DDPMScheduler, StableDiffusionInstructPix2PixPipeline, UNet2DConditionModel
+from diffusers import AutoencoderKL,StableDiffusionInstructPix2PixPipeline, UNet2DConditionModel,DDIMScheduler
 from diffusers.optimization import get_scheduler
 from diffusers.training_utils import EMAModel
 from diffusers.utils import check_min_version, deprecate, is_wandb_available
 from diffusers.utils.import_utils import is_xformers_available
 from diffusers.utils.torch_utils import is_compiled_module
+import re
 
 
 if is_wandb_available():
@@ -223,7 +224,7 @@ def parse_args():
         default=None,
         help="The directory where the downloaded models and datasets will be stored.",
     )
-    parser.add_argument("--seed", type=int, default=1, help="A seed for reproducible training.")
+    parser.add_argument("--seed", type=int, default=42, help="A seed for reproducible training.")
     parser.add_argument(
         "--resolution",
         type=int,
@@ -245,6 +246,7 @@ def parse_args():
     parser.add_argument(
         "--random_flip",
         action="store_true",
+        default=True,
         help="whether to randomly flip images horizontally",
     )
     parser.add_argument(
@@ -266,6 +268,7 @@ def parse_args():
     parser.add_argument(
         "--gradient_checkpointing",
         action="store_true",
+        default=True,
         help="Whether or not to use gradient checkpointing to save memory at the expense of slower backward pass.",
     )
     parser.add_argument(
@@ -295,7 +298,7 @@ def parse_args():
     parser.add_argument(
         "--conditioning_dropout_prob",
         type=float,
-        default=None,
+        default=0.05,
         help="Conditioning dropout probability. Drops out the conditionings (image and edit prompt) used in training InstructPix2Pix. See section 3.2.1 in the paper: https://arxiv.org/abs/2211.09800.",
     )
     parser.add_argument(
@@ -353,7 +356,7 @@ def parse_args():
     parser.add_argument(
         "--mixed_precision",
         type=str,
-        default=None,
+        default='fp16',
         choices=["no", "fp16", "bf16"],
         help=(
             "Whether to use mixed precision. Choose between fp16 and bf16 (bfloat16). Bf16 requires PyTorch >="
@@ -374,7 +377,7 @@ def parse_args():
     parser.add_argument(
         "--checkpointing_steps",
         type=int,
-        default=500,
+        default=1000,
         help=(
             "Save a checkpoint of the training state every X updates. These checkpoints are only suitable for resuming"
             " training using `--resume_from_checkpoint`."
@@ -383,7 +386,7 @@ def parse_args():
     parser.add_argument(
         "--checkpoints_total_limit",
         type=int,
-        default=None,
+        default=1,
         help=("Max number of checkpoints to store."),
     )
     parser.add_argument(
@@ -396,7 +399,7 @@ def parse_args():
         ),
     )
     parser.add_argument(
-        "--enable_xformers_memory_efficient_attention", action="store_true", help="Whether or not to use xformers."
+        "--enable_xformers_memory_efficient_attention",default=True, action="store_true", help="Whether or not to use xformers."
     )
 
     args = parser.parse_args()
@@ -492,7 +495,7 @@ def main():
                                   token=args.hub_token).repo_id
 
     # Load scheduler, tokenizer and models.
-    noise_scheduler = DDPMScheduler.from_pretrained(
+    noise_scheduler = DDIMScheduler.from_pretrained(
         args.pretrained_model_name_or_path, subfolder="scheduler")
     tokenizer = CLIPTokenizer.from_pretrained(
         args.pretrained_model_name_or_path,
@@ -517,6 +520,7 @@ def main():
     # then fine-tuned on the custom InstructPix2Pix dataset. This modified UNet is initialized
     # from the pre-trained checkpoints. For the extra channels added to the first layer, they are
     # initialized to zero.
+    '''
     logger.info(
         "Initializing the InstructPix2Pix UNet from the pretrained UNet.")
     in_channels = 8
@@ -531,7 +535,7 @@ def main():
         print(f"new_conv_in:{new_conv_in.weight[:,:4,:,:].shape},unet:{unet.conv_in.weight.shape}")
         new_conv_in.weight[:, :4, :, :].copy_(unet.conv_in.weight)
         unet.conv_in = new_conv_in
-
+    '''
     # Freeze vae and text_encoder
     vae.requires_grad_(False)
     text_encoder.requires_grad_(False)
@@ -693,6 +697,15 @@ def main():
             raise ValueError(
                 f"--edited_image_column' value '{args.edited_image_column}' needs to be one of: {', '.join(column_names)}"
             )
+
+    # Preprocessing the actions per line in the dataset.
+    def preprocess_actions(origin_actions:str):
+        numbers = re.findall(r"-?\d+\.?\d*", origin_actions)
+        numbers = [float(number) for number in numbers]
+        numbers[0] = (1 if numbers[0] >= 0.05 else (-1 if numbers[0] <= -0.05 else 0))
+        numbers[2] = 1 if numbers[1] >=0.05 else (-1 if numbers[1] <= -0.05 else 0)
+        ret = f"{numbers[2]},{numbers[0]},{numbers[3]},{numbers[4]}"
+        return ret
 
     # Preprocessing the datasets.
     # We need to tokenize input captions and transform the images.
