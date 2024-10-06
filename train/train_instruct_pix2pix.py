@@ -759,7 +759,8 @@ def main():
 
         # Preprocess the captions.
         captions = list(examples[edit_prompt_column])
-        examples["input_ids"] = tokenize_captions(captions)
+        processed_actions = [preprocess_actions(action) for action in captions]
+        examples["input_ids"] = tokenize_captions(processed_actions)
         return examples
 
     with accelerator.main_process_first():
