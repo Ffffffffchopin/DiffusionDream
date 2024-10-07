@@ -4,6 +4,21 @@
 			"path": "train/train_instruct_pix2pix.py",
 			"bookmarks": [
 				{
+					"line": 252,
+					"column": 15,
+					"label": "训练BatchSize参数"
+				},
+				{
+					"line": 254,
+					"column": 10,
+					"label": "训练epoch参数"
+				},
+				{
+					"line": 295,
+					"column": 15,
+					"label": ""
+				},
+				{
 					"line": 701,
 					"column": 4,
 					"label": "动作序列处理方法"

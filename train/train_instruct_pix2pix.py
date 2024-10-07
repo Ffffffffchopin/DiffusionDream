@@ -118,7 +118,7 @@ def parse_args():
     parser.add_argument(
         "--pretrained_model_name_or_path",
         type=str,
-        default="CompVis/stable-diffusion-v1-4",
+        default="timbrooks/instruct-pix2pix",
         required=False,
         help="Path to pretrained model or model identifier from huggingface.co/models.",
     )
@@ -293,7 +293,7 @@ def parse_args():
         ),
     )
     parser.add_argument(
-        "--lr_warmup_steps", type=int, default=500, help="Number of steps for the warmup in the lr scheduler."
+        "--lr_warmup_steps", type=int, default=100, help="Number of steps for the warmup in the lr scheduler."
     )
     parser.add_argument(
         "--conditioning_dropout_prob",
