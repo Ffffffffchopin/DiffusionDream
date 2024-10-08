@@ -52,6 +52,7 @@ from diffusers.utils import check_min_version, deprecate, is_wandb_available
 from diffusers.utils.import_utils import is_xformers_available
 from diffusers.utils.torch_utils import is_compiled_module
 import re
+import io
 
 
 if is_wandb_available():
@@ -135,15 +136,23 @@ def parse_args():
         default=None,
         help="Variant of the model files of the pretrained model identifier from huggingface.co/models, 'e.g.' fp16",
     )
+    # NOTE：指定数据集名称参数
     parser.add_argument(
         "--dataset_name",
         type=str,
-        default='/root/autodl-tmp/hub/hub/datasets--fffffchopin--DiffusionDream_Dataset/blobs',
+        default=None,
         help=(
             "The name of the Dataset (from the HuggingFace hub) to train on (could be your own, possibly private,"
             " dataset). It can also be a path pointing to a local copy of a dataset in your filesystem,"
             " or to a folder containing files that 🤗 Datasets can understand."
         ),
+    )
+    # NOTE：指定parquet_files参数
+    parser.add_argument(
+        "--parquet_files",
+        type=str,
+        default="/root/autodl-tmp/datasets/datasets/DiffusionDream_Datasets/data",
+        help="Path to a directory containing parquet files for the dataset.",
     )
     parser.add_argument(
         "--dataset_config_name",
@@ -151,6 +160,7 @@ def parse_args():
         default=None,
         help="The config of the Dataset, leave as None if there's only one config.",
     )
+    # NOTE：指定train_data_dir参数
     parser.add_argument(
         "--train_data_dir",
         type=str,
@@ -179,12 +189,15 @@ def parse_args():
         default="action",
         help="The column of the dataset containing the edit instruction.",
     )
+    # NOTE：指定验证图片参数
     parser.add_argument(
         "--val_image_url",
         type=str,
         default="https://bkimg.cdn.bcebos.com/pic/71cf3bc79f3df8dc87e8d055cf11728b46102818?x-bce-process=image/format,f_auto/resize,m_lfit,limit_1,h_336",
+        #default=None,
         help="URL to the original image that you would like to edit (used during inference for debugging purposes).",
     )
+    # NOTE：指定验证提示参数
     parser.add_argument(
         "--validation_prompt", type=str, default='1,0,0.0020,-0.0023', help="A prompt that is sampled during training for inference."
     )
@@ -194,15 +207,17 @@ def parse_args():
         default=4,
         help="Number of images that should be generated during validation with `validation_prompt`.",
     )
+    #NOTE：指定验证轮数参数
     parser.add_argument(
         "--validation_epochs",
         type=int,
-        default=5,
+        default=2,
         help=(
             "Run fine-tuning validation every X epochs. The validation process consists of running the prompt"
             " `args.validation_prompt` multiple times: `args.num_validation_images`."
         ),
     )
+    # NOTE：指定模型最大训练步数参数
     parser.add_argument(
         "--max_train_samples",
         type=int,
@@ -249,10 +264,12 @@ def parse_args():
         default=True,
         help="whether to randomly flip images horizontally",
     )
+    # NOTE：指定Batch-Size参数
     parser.add_argument(
-        "--train_batch_size", type=int, default=16, help="Batch size (per device) for the training dataloader."
+        "--train_batch_size", type=int, default=64, help="Batch size (per device) for the training dataloader."
     )
-    parser.add_argument("--num_train_epochs", type=int, default=10)
+    # NOTE：指定训练轮数参数
+    parser.add_argument("--num_train_epochs", type=int, default=4)
     parser.add_argument(
         "--max_train_steps",
         type=int,
@@ -292,6 +309,7 @@ def parse_args():
             ' "constant", "constant_with_warmup"]'
         ),
     )
+    # NOTE：指定warmup-steps参数
     parser.add_argument(
         "--lr_warmup_steps", type=int, default=100, help="Number of steps for the warmup in the lr scheduler."
     )
@@ -374,15 +392,17 @@ def parse_args():
         ),
     )
     parser.add_argument("--local_rank", type=int, default=-1, help="For distributed training: local_rank")
+    # NOTE: 指定保存checkpoint步数参数
     parser.add_argument(
         "--checkpointing_steps",
         type=int,
-        default=1000,
+        default=100,
         help=(
             "Save a checkpoint of the training state every X updates. These checkpoints are only suitable for resuming"
             " training using `--resume_from_checkpoint`."
         ),
     )
+    # NOTE: 指定最大保存checkpoint数量参数
     parser.add_argument(
         "--checkpoints_total_limit",
         type=int,
@@ -408,8 +428,10 @@ def parse_args():
         args.local_rank = env_local_rank
 
     # Sanity checks
+    '''
     if args.dataset_name is None and args.train_data_dir is None:
         raise ValueError("Need either a dataset name or a training folder.")
+    '''
 
     # default to using the same revision for the non-ema model if not specified
     if args.non_ema_revision is None:
@@ -419,6 +441,8 @@ def parse_args():
 
 
 def convert_to_np(image, resolution):
+    image = io.BytesIO(image)
+    image = PIL.Image.open(image)
     image = image.convert("RGB").resize((resolution, resolution))
     return np.array(image).transpose(2, 0, 1)
 
@@ -494,6 +518,7 @@ def main():
                                   exist_ok=True,
                                   token=args.hub_token).repo_id
 
+    # NOTE：加载模型各项组件
     # Load scheduler, tokenizer and models.
     noise_scheduler = DDIMScheduler.from_pretrained(
         args.pretrained_model_name_or_path, subfolder="scheduler")
@@ -645,11 +670,21 @@ def main():
 
     # In distributed training, the load_dataset function guarantees that only one local process can concurrently
     # download the dataset.
+    # NOTE: 加载数据集
     if args.dataset_name is not None:
         # Downloading and loading a dataset from the hub.
         dataset = load_dataset(
             args.dataset_name,
             args.dataset_config_name,
+            cache_dir=args.cache_dir,
+        )
+    elif args.parquet_files is not None:
+        # Load a dataset from parquet files.
+        data_files = {}
+        data_files["train"] = os.path.join(args.parquet_files, "**") 
+        dataset = datasets.load_dataset(
+            "parquet",
+            data_files=data_files,
             cache_dir=args.cache_dir,
         )
     else:
@@ -1067,7 +1102,8 @@ def main():
 
             if global_step >= args.max_train_steps:
                 break
-
+        
+        # NOTE: 验证判定
         if accelerator.is_main_process:
             if ((args.val_image_url is not None)
                     and (args.validation_prompt is not None)

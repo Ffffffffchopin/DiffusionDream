@@ -14,9 +14,9 @@ pipeline = StableDiffusionInstructPix2PixPipeline.from_pretrained("/root/autodl-
 
 prompt="Zoom into the image"
 
-action="tx:0.0215,ty:0.0065,tz:-0.0296,dx:0.0020,dy:-0.0023"
+action="1,0,0.0020,-0.0023"
 
 
-ret=pipeline(action,image,num_inference_steps=999,image_guidance_scale=1.5,guidance_scale=7,generator=generator).images[0]
+ret=pipeline(action,image,num_inference_steps=1000,image_guidance_scale=1.5,guidance_scale=7,generator=generator).images[0]
 
 ret.save("output.png")
