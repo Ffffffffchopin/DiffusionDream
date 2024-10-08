@@ -16,7 +16,12 @@
 				{
 					"line": 295,
 					"column": 15,
-					"label": ""
+					"label": "热身step参数"
+				},
+				{
+					"line": 401,
+					"column": 14,
+					"label": "xformer是否启用参数"
 				},
 				{
 					"line": 701,

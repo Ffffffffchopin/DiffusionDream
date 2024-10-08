@@ -138,7 +138,7 @@ def parse_args():
     parser.add_argument(
         "--dataset_name",
         type=str,
-        default='fffffchopin/DiffusionDream_Dataset',
+        default='/root/autodl-tmp/hub/hub/datasets--fffffchopin--DiffusionDream_Dataset/blobs',
         help=(
             "The name of the Dataset (from the HuggingFace hub) to train on (could be your own, possibly private,"
             " dataset). It can also be a path pointing to a local copy of a dataset in your filesystem,"
@@ -186,7 +186,7 @@ def parse_args():
         help="URL to the original image that you would like to edit (used during inference for debugging purposes).",
     )
     parser.add_argument(
-        "--validation_prompt", type=str, default='tx:0.0215,ty:0.0065,tz:-0.0297,dx:0.0020,dy:-0.0023', help="A prompt that is sampled during training for inference."
+        "--validation_prompt", type=str, default='1,0,0.0020,-0.0023', help="A prompt that is sampled during training for inference."
     )
     parser.add_argument(
         "--num_validation_images",
@@ -336,7 +336,7 @@ def parse_args():
     parser.add_argument("--adam_weight_decay", type=float, default=1e-2, help="Weight decay to use.")
     parser.add_argument("--adam_epsilon", type=float, default=1e-08, help="Epsilon value for the Adam optimizer")
     parser.add_argument("--max_grad_norm", default=1.0, type=float, help="Max gradient norm.")
-    parser.add_argument("--push_to_hub", action="store_true", help="Whether or not to push the model to the Hub.",default=True)
+    parser.add_argument("--push_to_hub", action="store_true", help="Whether or not to push the model to the Hub.",default=False)
     parser.add_argument("--hub_token", type=str, default=None, help="The token to use to push to the Model Hub.")
     parser.add_argument(
         "--hub_model_id",
@@ -399,7 +399,7 @@ def parse_args():
         ),
     )
     parser.add_argument(
-        "--enable_xformers_memory_efficient_attention",default=True, action="store_true", help="Whether or not to use xformers."
+        "--enable_xformers_memory_efficient_attention",default=False, action="store_true", help="Whether or not to use xformers."
     )
 
     args = parser.parse_args()
