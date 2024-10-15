@@ -459,9 +459,12 @@ def tensor_to_bytes(tensor):
 def convert_to_np(image, resolution):
     if isinstance(image, torch.Tensor):
         #image = trans_tensor_to_pil(image)
-        image = tensor_to_bytes(image)
-    image = io.BytesIO(image)
-    image = PIL.Image.open(image)
+        #image = tensor_to_bytes(image)
+        to_pil_image = transforms.ToPILImage()
+        image = to_pil_image(image)
+    else:
+        image = io.BytesIO(image)
+        image = PIL.Image.open(image)
     image = image.convert("RGB").resize((resolution, resolution))
     return np.array(image).transpose(2, 0, 1)
 
