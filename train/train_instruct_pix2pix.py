@@ -446,10 +446,20 @@ def trans_tensor_to_pil(tensor_img):
     pil_image = transforms.ToPILImage()(tensor_img.squeeze_(0))
     return pil_image
 
+def tensor_to_bytes(tensor):
+    # 将Tensor转换为NumPy数组
+    numpy_array = tensor.numpy()
+    
+    # 将NumPy数组转换为字节
+    byte_data = numpy_array.tobytes()
+    
+    return byte_data
+
 
 def convert_to_np(image, resolution):
     if isinstance(image, torch.Tensor):
-        image = trans_tensor_to_pil(image)
+        #image = trans_tensor_to_pil(image)
+        image = tensor_to_bytes(image)
     image = io.BytesIO(image)
     image = PIL.Image.open(image)
     image = image.convert("RGB").resize((resolution, resolution))
