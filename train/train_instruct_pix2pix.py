@@ -151,7 +151,7 @@ def parse_args():
     parser.add_argument(
         "--parquet_files",
         type=str,
-        default="/root/autodl-tmp/datasets/datasets/DiffusionDream_Datasets/data",
+        default="/root/autodl-tmp/tmp_parquets",
         help="Path to a directory containing parquet files for the dataset.",
     )
     parser.add_argument(
@@ -677,6 +677,7 @@ def main():
             args.dataset_name,
             args.dataset_config_name,
             cache_dir=args.cache_dir,
+            #streaming=True,
         )
     elif args.parquet_files is not None:
         # Load a dataset from parquet files.
