@@ -809,6 +809,7 @@ def main():
                 range(args.max_train_samples))
         # Set the training transforms
         train_dataset = dataset["train"].map(preprocess_train)
+        torch_iterable_dataset = train_dataset.with_format("torch")
 
     def collate_fn(examples):
         original_pixel_values = torch.stack(
@@ -828,7 +829,7 @@ def main():
 
     # DataLoaders creation:
     train_dataloader = torch.utils.data.DataLoader(
-        train_dataset,
+        torch_iterable_dataset,
         #shuffle=True,
         collate_fn=collate_fn,
         batch_size=args.train_batch_size,
