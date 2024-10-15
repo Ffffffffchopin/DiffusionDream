@@ -140,7 +140,7 @@ def parse_args():
     parser.add_argument(
         "--dataset_name",
         type=str,
-        default=None,
+        default="fffffchopin/DiffusionDream_Dataset",
         help=(
             "The name of the Dataset (from the HuggingFace hub) to train on (could be your own, possibly private,"
             " dataset). It can also be a path pointing to a local copy of a dataset in your filesystem,"
@@ -151,7 +151,7 @@ def parse_args():
     parser.add_argument(
         "--parquet_files",
         type=str,
-        default="/root/autodl-tmp/tmp_parquets",
+        default=None,
         help="Path to a directory containing parquet files for the dataset.",
     )
     parser.add_argument(
@@ -230,7 +230,7 @@ def parse_args():
     parser.add_argument(
         "--output_dir",
         type=str,
-        default="/root/autodl-tmp/model/instruct_pix2pix",
+        default="/kaggle/working/model",
         help="The output directory where the model predictions and checkpoints will be written.",
     )
     parser.add_argument(
@@ -354,8 +354,10 @@ def parse_args():
     parser.add_argument("--adam_weight_decay", type=float, default=1e-2, help="Weight decay to use.")
     parser.add_argument("--adam_epsilon", type=float, default=1e-08, help="Epsilon value for the Adam optimizer")
     parser.add_argument("--max_grad_norm", default=1.0, type=float, help="Max gradient norm.")
-    parser.add_argument("--push_to_hub", action="store_true", help="Whether or not to push the model to the Hub.",default=False)
-    parser.add_argument("--hub_token", type=str, default=None, help="The token to use to push to the Model Hub.")
+    # NOTE：指定是否推送模型参数
+    parser.add_argument("--push_to_hub", action="store_true", help="Whether or not to push the model to the Hub.",default=True)
+    # NOTE：指定Token参数
+    parser.add_argument("--hub_token", type=str, default="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", help="The token to use to push to the Model Hub.")
     parser.add_argument(
         "--hub_model_id",
         type=str,
@@ -677,7 +679,7 @@ def main():
             args.dataset_name,
             args.dataset_config_name,
             cache_dir=args.cache_dir,
-            #streaming=True,
+            streaming=True,
         )
     elif args.parquet_files is not None:
         # Load a dataset from parquet files.
@@ -743,6 +745,7 @@ def main():
         ret = f"{numbers[2]},{numbers[0]},{numbers[3]},{numbers[4]}"
         return ret
 
+    # NOTE:处理数据集
     # Preprocessing the datasets.
     # We need to tokenize input captions and transform the images.
     def tokenize_captions(captions):
@@ -804,7 +807,7 @@ def main():
             dataset["train"] = dataset["train"].shuffle(seed=args.seed).select(
                 range(args.max_train_samples))
         # Set the training transforms
-        train_dataset = dataset["train"].with_transform(preprocess_train)
+        train_dataset = dataset["train"].map(preprocess_train)
 
     def collate_fn(examples):
         original_pixel_values = torch.stack(
