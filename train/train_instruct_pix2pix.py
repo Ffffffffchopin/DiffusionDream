@@ -759,7 +759,9 @@ def main():
 
     # Preprocessing the actions per line in the dataset.
     def preprocess_actions(origin_actions:str):
+        print(f"origin_actions:{origin_actions}")
         numbers = re.findall(r"-?\d+\.?\d*", origin_actions)
+        print(f"numbers:{numbers}")
         numbers = [float(number) for number in numbers]
         numbers[0] = (1 if numbers[0] >= 0.05 else (-1 if numbers[0] <= -0.05 else 0))
         numbers[2] = 1 if numbers[1] >=0.05 else (-1 if numbers[1] <= -0.05 else 0)
