@@ -44,3 +44,7 @@ datasets_utils/pose/pretrained_models/
 
 wandb/
 
+/*.py
+
+
+
