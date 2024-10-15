@@ -18,7 +18,7 @@ class DatasetsConfig:
         self.csv_path = self.badiu_netdisk_path / 'DiffusionDream_CSV' 
         #self.csv_file = os.path.join(self.csv_path, 'diffusiondream.csv')
         self.current_processing_keyword = ""
-        self.parquet_path = self.project_path / 'datasets_utils' / 'tmp' / 'tmp_parquet'
+        self.parquet_path = path("/kaggle/working/parquets") 
         self.txt_path = self.project_path / 'datasets_utils' /   'bvid.txt'
 
 
