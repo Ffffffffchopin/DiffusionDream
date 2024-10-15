@@ -701,7 +701,7 @@ def main():
             cache_dir=args.cache_dir,
             #streaming=True,
         )
-        dataset = dataset.with_format("torch")
+        #dataset = dataset.with_format("torch")
     elif args.parquet_files is not None:
         # Load a dataset from parquet files.
         data_files = {}
@@ -831,7 +831,7 @@ def main():
                 range(args.max_train_samples))
         # Set the training transforms
         train_dataset = dataset["train"].with_transform(preprocess_train)
-        torch_iterable_dataset = train_dataset.with_format("torch")
+        #torch_iterable_dataset = train_dataset.with_format("torch")
 
     def collate_fn(examples):
         original_pixel_values = torch.stack(
@@ -851,7 +851,7 @@ def main():
 
     # DataLoaders creation:
     train_dataloader = torch.utils.data.DataLoader(
-        torch_iterable_dataset,
+        train_dataset,
         shuffle=True,
         collate_fn=collate_fn,
         batch_size=args.train_batch_size,
