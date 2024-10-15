@@ -681,6 +681,7 @@ def main():
             cache_dir=args.cache_dir,
             streaming=True,
         )
+        dataset = dataset.with_format("torch")
     elif args.parquet_files is not None:
         # Load a dataset from parquet files.
         data_files = {}
