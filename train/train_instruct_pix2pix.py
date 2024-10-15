@@ -830,7 +830,7 @@ def main():
             dataset["train"] = dataset["train"].shuffle(seed=args.seed).select(
                 range(args.max_train_samples))
         # Set the training transforms
-        train_dataset = dataset["train"].with_transform(preprocess_train)
+        train_dataset = dataset["train"].map(preprocess_train)
         #torch_iterable_dataset = train_dataset.with_format("torch")
 
     def collate_fn(examples):
