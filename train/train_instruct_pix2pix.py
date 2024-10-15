@@ -442,7 +442,14 @@ def parse_args():
     return args
 
 
+def trans_tensor_to_pil(tensor_img):
+    pil_image = transforms.ToPILImage()(tensor_img.squeeze_(0))
+    return pil_image
+
+
 def convert_to_np(image, resolution):
+    if isinstance(image, torch.Tensor):
+        image = trans_tensor_to_pil(image)
     image = io.BytesIO(image)
     image = PIL.Image.open(image)
     image = image.convert("RGB").resize((resolution, resolution))
