@@ -699,7 +699,7 @@ def main():
             args.dataset_name,
             args.dataset_config_name,
             cache_dir=args.cache_dir,
-            #streaming=True,
+            streaming=True,
         )
         #dataset = dataset.with_format("torch")
     elif args.parquet_files is not None:
@@ -863,10 +863,10 @@ def main():
     # Check the PR https://github.com/huggingface/diffusers/pull/8312 for detailed explanation.
     num_warmup_steps_for_scheduler = args.lr_warmup_steps * accelerator.num_processes
     if args.max_train_steps is None:
-        len_train_dataloader_after_sharding = math.ceil(
-            len(train_dataloader) / accelerator.num_processes)
         #len_train_dataloader_after_sharding = math.ceil(
-            #819 / accelerator.num_processes)
+            #len(train_dataloader) / accelerator.num_processes)
+        len_train_dataloader_after_sharding = math.ceil(
+            819 / accelerator.num_processes)
         num_update_steps_per_epoch = math.ceil(
             len_train_dataloader_after_sharding /
             args.gradient_accumulation_steps)
@@ -903,10 +903,10 @@ def main():
     vae.to(accelerator.device, dtype=weight_dtype)
 
     # We need to recalculate our total training steps as the size of the training dataloader may have changed.
-    num_update_steps_per_epoch = math.ceil(
-        len(train_dataloader) / args.gradient_accumulation_steps)
     #num_update_steps_per_epoch = math.ceil(
-        #819 / args.gradient_accumulation_steps)
+        #len(train_dataloader) / args.gradient_accumulation_steps)
+    num_update_steps_per_epoch = math.ceil(
+        819 / args.gradient_accumulation_steps)
     if args.max_train_steps is None:
         args.max_train_steps = args.num_train_epochs * num_update_steps_per_epoch
         if num_training_steps_for_scheduler != args.max_train_steps * accelerator.num_processes:
