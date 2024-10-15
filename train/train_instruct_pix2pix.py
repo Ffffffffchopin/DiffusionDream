@@ -679,7 +679,7 @@ def main():
             args.dataset_name,
             args.dataset_config_name,
             cache_dir=args.cache_dir,
-            streaming=True,
+            #streaming=True,
         )
         dataset = dataset.with_format("torch")
     elif args.parquet_files is not None:
