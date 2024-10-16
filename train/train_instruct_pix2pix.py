@@ -382,7 +382,7 @@ def parse_args():
     parser.add_argument(
         "--mixed_precision",
         type=str,
-        default='no',
+        default='fp16',
         choices=["no", "fp16", "bf16"],
         help=(
             "Whether to use mixed precision. Choose between fp16 and bf16 (bfloat16). Bf16 requires PyTorch >="
@@ -891,7 +891,7 @@ def main():
         #len_train_dataloader_after_sharding = math.ceil(
             #len(train_dataloader) / accelerator.num_processes)
         len_train_dataloader_after_sharding = math.ceil(
-            819 / accelerator.num_processes)
+            52356 / accelerator.num_processes)
         num_update_steps_per_epoch = math.ceil(
             len_train_dataloader_after_sharding /
             args.gradient_accumulation_steps)
@@ -931,12 +931,12 @@ def main():
     #num_update_steps_per_epoch = math.ceil(
         #len(train_dataloader) / args.gradient_accumulation_steps)
     num_update_steps_per_epoch = math.ceil(
-        819 / args.gradient_accumulation_steps)
+        52356 / args.gradient_accumulation_steps)
     if args.max_train_steps is None:
         args.max_train_steps = args.num_train_epochs * num_update_steps_per_epoch
         if num_training_steps_for_scheduler != args.max_train_steps * accelerator.num_processes:
             logger.warning(
-                f"The length of the 'train_dataloader' after 'accelerator.prepare' (819) does not match "
+                f"The length of the 'train_dataloader' after 'accelerator.prepare' (52356) does not match "
                 f"the expected length ({len_train_dataloader_after_sharding}) when the learning rate scheduler was created. "
                 f"This inconsistency may result in the learning rate scheduler not functioning properly."
             )
@@ -953,7 +953,7 @@ def main():
     total_batch_size = args.train_batch_size * accelerator.num_processes * args.gradient_accumulation_steps
 
     logger.info("***** Running training *****")
-    logger.info("  Num examples = 819")
+    logger.info("  Num examples = 52356")
     logger.info(f"  Num Epochs = {args.num_train_epochs}")
     logger.info(
         f"  Instantaneous batch size per device = {args.train_batch_size}")
