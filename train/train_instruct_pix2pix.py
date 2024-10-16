@@ -234,8 +234,9 @@ def parse_args():
     parser.add_argument(
         "--output_dir",
         type=str,
-        default="/kaggle/working/model",
+        #default="/kaggle/working/model",
         #default="./model",
+        default="/root/autodl-tmp/model",
         help="The output directory where the model predictions and checkpoints will be written.",
     )
     parser.add_argument(
@@ -271,7 +272,7 @@ def parse_args():
     )
     # NOTE：指定Batch-Size参数
     parser.add_argument(
-        "--train_batch_size", type=int, default=1, help="Batch size (per device) for the training dataloader."
+        "--train_batch_size", type=int, default=64, help="Batch size (per device) for the training dataloader."
     )
     # NOTE：指定训练轮数参数
     parser.add_argument("--num_train_epochs", type=int, default=4)
@@ -879,7 +880,7 @@ def main():
         collate_fn=collate_fn,
         batch_size=args.train_batch_size,
         num_workers=args.dataloader_num_workers,
-        pin_memory=True
+        #pin_memory=True
     )
 
     # NOTE:计算训练步数
