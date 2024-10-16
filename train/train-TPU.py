@@ -55,6 +55,8 @@ from diffusers.utils.import_utils import is_xformers_available
 from diffusers.utils.torch_utils import is_compiled_module
 import re
 import io
+import torch_xla.core.xla_model as xm
+import torch_xla
 
 
 if is_wandb_available():
@@ -379,11 +381,10 @@ def parse_args():
             " *output_dir/runs/**CURRENT_DATETIME_HOSTNAME***."
         ),
     )
-    #NOTE：指定是否使用混合精度参数
     parser.add_argument(
         "--mixed_precision",
         type=str,
-        default='no',
+        default='fp16',
         choices=["no", "fp16", "bf16"],
         help=(
             "Whether to use mixed precision. Choose between fp16 and bf16 (bfloat16). Bf16 requires PyTorch >="
