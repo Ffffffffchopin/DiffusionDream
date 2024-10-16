@@ -999,8 +999,8 @@ def main():
         unet.train()
         train_loss = 0.0
         for step, batch in enumerate(train_dataloader):
-            batch["edited_pixel_values"] = torch.squeeze(batch["edited_pixel_values"])
-            batch["original_pixel_values"] = torch.squeeze(batch["original_pixel_values"])
+            batch["edited_pixel_values"] = torch.squeeze(batch["edited_pixel_values"],1)
+            batch["original_pixel_values"] = torch.squeeze(batch["original_pixel_values"],1)
             # Skip steps until we reach the resumed step
             if args.resume_from_checkpoint and epoch == first_epoch and step < resume_step:
                 if step % args.gradient_accumulation_steps == 0:
