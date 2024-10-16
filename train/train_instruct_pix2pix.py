@@ -429,7 +429,7 @@ def parse_args():
         ),
     )
     parser.add_argument(
-        "--enable_xformers_memory_efficient_attention",default=True, action="store_true", help="Whether or not to use xformers."
+        "--enable_xformers_memory_efficient_attention",default=False, action="store_true", help="Whether or not to use xformers."
     )
 
     args = parser.parse_args()
