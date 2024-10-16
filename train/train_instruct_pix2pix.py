@@ -274,7 +274,7 @@ def parse_args():
         "--train_batch_size", type=int, default=2, help="Batch size (per device) for the training dataloader."
     )
     # NOTE：指定训练轮数参数
-    parser.add_argument("--num_train_epochs", type=int, default=4)
+    parser.add_argument("--num_train_epochs", type=int, default=1)
     parser.add_argument(
         "--max_train_steps",
         type=int,
