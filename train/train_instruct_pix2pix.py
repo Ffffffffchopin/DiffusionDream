@@ -948,7 +948,7 @@ def main():
     # The trackers initializes automatically on the main process.
     if accelerator.is_main_process:
         accelerator.init_trackers("instruct-pix2pix", config=vars(args))
-
+    # NOTE:训练开始
     # Train!
     total_batch_size = args.train_batch_size * accelerator.num_processes * args.gradient_accumulation_steps
 
@@ -996,9 +996,11 @@ def main():
     progress_bar = tqdm(range(global_step, args.max_train_steps),
                         disable=not accelerator.is_local_main_process)
     progress_bar.set_description("Steps")
+    '''
     import gc
     gc.collect()
     torch.cuda.empty_cache()
+    '''
     for epoch in range(first_epoch, args.num_train_epochs):
         unet.train()
         train_loss = 0.0
@@ -1084,7 +1086,7 @@ def main():
                         f"Unknown prediction type {noise_scheduler.config.prediction_type}"
                     )
                 # TODO: Check if this is necessary
-                torch.cuda.empty_cache()
+                #torch.cuda.empty_cache()
                 # Predict the noise residual and compute loss
                 model_pred = unet(concatenated_noisy_latents,
                                   timesteps,
