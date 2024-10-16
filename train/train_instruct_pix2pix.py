@@ -234,9 +234,9 @@ def parse_args():
     parser.add_argument(
         "--output_dir",
         type=str,
-        #default="/kaggle/working/model",
+        default="/kaggle/working/model",
         #default="./model",
-        default="/root/autodl-tmp/model",
+        #default="/root/autodl-tmp/model",
         help="The output directory where the model predictions and checkpoints will be written.",
     )
     parser.add_argument(
@@ -272,7 +272,7 @@ def parse_args():
     )
     # NOTE：指定Batch-Size参数
     parser.add_argument(
-        "--train_batch_size", type=int, default=64, help="Batch size (per device) for the training dataloader."
+        "--train_batch_size", type=int, default=1, help="Batch size (per device) for the training dataloader."
     )
     # NOTE：指定训练轮数参数
     parser.add_argument("--num_train_epochs", type=int, default=4)
@@ -285,7 +285,7 @@ def parse_args():
     parser.add_argument(
         "--gradient_accumulation_steps",
         type=int,
-        default=1,
+        default=10,
         help="Number of updates steps to accumulate before performing a backward/update pass.",
     )
     parser.add_argument(
