@@ -16,6 +16,8 @@
 
 """Script to fine-tune Stable Diffusion for InstructPix2Pix."""
 
+#action_count = 0
+
 import argparse
 import logging
 import math
@@ -227,10 +229,13 @@ def parse_args():
             "value if set."
         ),
     )
+    # NOTE：指定输出目录参数
+    # TODO: 切换平台时需修改
     parser.add_argument(
         "--output_dir",
         type=str,
         default="/kaggle/working/model",
+        #default="./model",
         help="The output directory where the model predictions and checkpoints will be written.",
     )
     parser.add_argument(
@@ -462,6 +467,8 @@ def convert_to_np(image, resolution):
         #image = tensor_to_bytes(image)
         to_pil_image = transforms.ToPILImage()
         image = to_pil_image(image)
+    elif isinstance(image, PIL.JpegImagePlugin.JpegImageFile):
+        image = image
     else:
         image = io.BytesIO(image)
         image = PIL.Image.open(image)
@@ -477,6 +484,7 @@ def download_image(url):
 
 
 def main():
+    #action_count = 0
     args = parse_args()
     if args.report_to == "wandb" and args.hub_token is not None:
         raise ValueError(
@@ -759,12 +767,18 @@ def main():
 
     # Preprocessing the actions per line in the dataset.
     def preprocess_actions(origin_actions:str):
+        #global action_count 
         #print(f"origin_actions:{origin_actions}")
-        numbers = re.findall(r"-?\d+\.?\d*", origin_actions)
+        numbers = re.findall(r"[-+]?\d*\.\d+|\d+", origin_actions)
         #print(f"numbers:{numbers}")
         numbers = [float(number) for number in numbers]
+        
         numbers[0] = (1 if numbers[0] >= 0.05 else (-1 if numbers[0] <= -0.05 else 0))
         numbers[2] = 1 if numbers[1] >=0.05 else (-1 if numbers[1] <= -0.05 else 0)
+            #action_count +=1
+            #print("success")
+    
+            #print(f"action_count:{action_count}")
         ret = f"{numbers[2]},{numbers[0]},{numbers[3]},{numbers[4]}"
         return ret
 
@@ -788,13 +802,16 @@ def main():
     ])
 
     def preprocess_images(examples):
-        original_images = np.concatenate([
-            convert_to_np(image, args.resolution)
-            for image in examples[original_image_column]
-        ])
+        try:
+            original_images = np.concatenate([
+                convert_to_np(examples[original_image_column], args.resolution)
+                #for image in examples[original_image_column]
+            ])
+        except:
+            print(f"examples[original_image_column]: {examples[original_image_column]}")
         edited_images = np.concatenate([
-            convert_to_np(image, args.resolution)
-            for image in examples[edited_image_column]
+            convert_to_np(examples[edited_image_column], args.resolution)
+            #for image in examples[edited_image_column]
         ])
         # We need to ensure that the original and the edited images undergo the same
         # augmentation transforms.
@@ -820,9 +837,13 @@ def main():
         examples["edited_pixel_values"] = edited_images
 
         # Preprocess the captions.
-        captions = list(examples[edit_prompt_column])
-        processed_actions = [preprocess_actions(action) for action in captions]
+        #print(f"examples[edit_prompt_column]:{examples[edit_prompt_column]}")
+        #print(f"list:{list(examples[edit_prompt_column])}")
+        #captions = list(examples[edit_prompt_column])
+        #processed_actions = [preprocess_actions(action) for action in captions]
+        processed_actions = preprocess_actions(examples[edit_prompt_column])
         examples["input_ids"] = tokenize_captions(processed_actions)
+        #examples["input_ids"] = processed_actions
         return examples
 
     with accelerator.main_process_first():
@@ -976,6 +997,8 @@ def main():
         unet.train()
         train_loss = 0.0
         for step, batch in enumerate(train_dataloader):
+            batch["edited_pixel_values"] = torch.squeeze(batch["edited_pixel_values"])
+            batch["original_pixel_values"] = torch.squeeze(batch["original_pixel_values"])
             # Skip steps until we reach the resumed step
             if args.resume_from_checkpoint and epoch == first_epoch and step < resume_step:
                 if step % args.gradient_accumulation_steps == 0:
