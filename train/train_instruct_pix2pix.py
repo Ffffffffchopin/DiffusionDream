@@ -1083,7 +1083,7 @@ def main():
                     raise ValueError(
                         f"Unknown prediction type {noise_scheduler.config.prediction_type}"
                     )
-
+                torch.cuda.empty_cache()
                 # Predict the noise residual and compute loss
                 model_pred = unet(concatenated_noisy_latents,
                                   timesteps,
