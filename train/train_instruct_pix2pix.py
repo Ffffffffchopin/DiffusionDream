@@ -322,7 +322,8 @@ def parse_args():
     parser.add_argument(
         "--conditioning_dropout_prob",
         type=float,
-        default=0.05,
+        #default=0.05,
+        default=None,
         help="Conditioning dropout probability. Drops out the conditionings (image and edit prompt) used in training InstructPix2Pix. See section 3.2.1 in the paper: https://arxiv.org/abs/2211.09800.",
     )
     parser.add_argument(
@@ -518,8 +519,9 @@ def main():
     if torch.backends.mps.is_available():
         accelerator.native_amp = False
 
-    generator = torch.Generator(device=accelerator.device).manual_seed(
-        args.seed)
+    #TODO: 为了保证模型的可复现性，需要设置随机种子
+    #generator = torch.Generator(device=accelerator.device).manual_seed(
+        #args.seed)
 
     # Make one log on every process with the configuration for debugging.
     logging.basicConfig(
