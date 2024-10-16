@@ -1206,6 +1206,7 @@ def main():
                 torch.cuda.empty_cache()
 
     # Create the pipeline using the trained modules and save it.
+    print("finished")
     accelerator.wait_for_everyone()
     if accelerator.is_main_process:
         if args.use_ema:
