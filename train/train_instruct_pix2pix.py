@@ -271,7 +271,7 @@ def parse_args():
     )
     # NOTE：指定Batch-Size参数
     parser.add_argument(
-        "--train_batch_size", type=int, default=16, help="Batch size (per device) for the training dataloader."
+        "--train_batch_size", type=int, default=8, help="Batch size (per device) for the training dataloader."
     )
     # NOTE：指定训练轮数参数
     parser.add_argument("--num_train_epochs", type=int, default=4)
@@ -484,6 +484,7 @@ def download_image(url):
 
 
 def main():
+    
     #action_count = 0
     args = parse_args()
     if args.report_to == "wandb" and args.hub_token is not None:
@@ -500,6 +501,7 @@ def main():
             ("Downloading 'non_ema' weights from revision branches of the Hub is deprecated. Please make sure to"
              " use `--variant=non_ema` instead."),
         )
+    print(f"batch_size:{args.train_batch_size}")
     logging_dir = os.path.join(args.output_dir, args.logging_dir)
     accelerator_project_config = ProjectConfiguration(
         project_dir=args.output_dir, logging_dir=logging_dir)
