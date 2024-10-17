@@ -1,3 +1,0 @@
-datasets_utils/pose/pretrained_models/** filter=lfs diff=lfs merge=lfs -text
-**/*.ckpt filter=lfs diff=lfs merge=lfs -text
-**/*.pth filter=lfs diff=lfs merge=lfs -text
