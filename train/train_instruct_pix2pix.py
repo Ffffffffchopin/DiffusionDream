@@ -272,7 +272,7 @@ def parse_args():
     )
     # NOTE：指定Batch-Size参数
     parser.add_argument(
-        "--train_batch_size", type=int, default=2, help="Batch size (per device) for the training dataloader."
+        "--train_batch_size", type=int, default=4, help="Batch size (per device) for the training dataloader."
     )
     # NOTE：指定训练轮数参数
     parser.add_argument("--num_train_epochs", type=int, default=1)
@@ -887,6 +887,7 @@ def main():
     )
 
     # NOTE:计算训练步数
+    # TODO由于在流式数据集上训练，因此需要手动计算训练步数
     # Scheduler and math around the number of training steps.
     # Check the PR https://github.com/huggingface/diffusers/pull/8312 for detailed explanation.
     num_warmup_steps_for_scheduler = args.lr_warmup_steps * accelerator.num_processes
@@ -894,7 +895,7 @@ def main():
         #len_train_dataloader_after_sharding = math.ceil(
             #len(train_dataloader) / accelerator.num_processes)
         len_train_dataloader_after_sharding = math.ceil(
-            52356 / accelerator.num_processes)
+            13089 / accelerator.num_processes)
         num_update_steps_per_epoch = math.ceil(
             len_train_dataloader_after_sharding /
             args.gradient_accumulation_steps)
@@ -934,7 +935,7 @@ def main():
     #num_update_steps_per_epoch = math.ceil(
         #len(train_dataloader) / args.gradient_accumulation_steps)
     num_update_steps_per_epoch = math.ceil(
-        52356 / args.gradient_accumulation_steps)
+        13089 / args.gradient_accumulation_steps)
     if args.max_train_steps is None:
         args.max_train_steps = args.num_train_epochs * num_update_steps_per_epoch
         if num_training_steps_for_scheduler != args.max_train_steps * accelerator.num_processes:
@@ -953,6 +954,7 @@ def main():
         accelerator.init_trackers("instruct-pix2pix", config=vars(args))
     # NOTE:训练开始
     # Train!
+    print(f"num_processes:{accelerator.num_processes}")
     total_batch_size = args.train_batch_size * accelerator.num_processes * args.gradient_accumulation_steps
 
     logger.info("***** Running training *****")
