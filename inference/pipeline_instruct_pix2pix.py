@@ -17,6 +17,6 @@ prompt="Zoom into the image"
 action="1,0,0.0020,-0.0023"
 
 
-ret=pipeline(action,image,num_inference_steps=1000,image_guidance_scale=1.5,guidance_scale=7,generator=generator).images[0]
+ret=pipeline(action,image,num_inference_steps=4,image_guidance_scale=1.5,guidance_scale=7,generator=generator).images[0]
 
 ret.save("output.png")

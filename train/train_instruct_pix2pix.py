@@ -71,6 +71,7 @@ DATASET_NAME_MAPPING = {
 WANDB_TABLE_COL_NAMES = ["previous_frame1", "current_frame", "action"]
 
 
+#NOTE: 验证模型
 def log_validation(
     pipeline,
     args,
