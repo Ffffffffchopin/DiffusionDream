@@ -322,12 +322,13 @@ def parse_args():
     parser.add_argument(
         "--conditioning_dropout_prob",
         type=float,
-        #default=0.05,
-        default=None,
+        default=0.05,
+        #default=None,
         help="Conditioning dropout probability. Drops out the conditionings (image and edit prompt) used in training InstructPix2Pix. See section 3.2.1 in the paper: https://arxiv.org/abs/2211.09800.",
     )
+    #NOTE：指定是否使用8bit优化器
     parser.add_argument(
-        "--use_8bit_adam", action="store_true", help="Whether or not to use 8-bit Adam from bitsandbytes."
+        "--use_8bit_adam", action="store_true", help="Whether or not to use 8-bit Adam from bitsandbytes.",default=True
     )
     parser.add_argument(
         "--allow_tf32",
@@ -384,7 +385,7 @@ def parse_args():
     parser.add_argument(
         "--mixed_precision",
         type=str,
-        default='no',
+        default='fp16s',
         choices=["no", "fp16", "bf16"],
         help=(
             "Whether to use mixed precision. Choose between fp16 and bf16 (bfloat16). Bf16 requires PyTorch >="
@@ -519,9 +520,8 @@ def main():
     if torch.backends.mps.is_available():
         accelerator.native_amp = False
 
-    #TODO: 为了保证模型的可复现性，需要设置随机种子
-    #generator = torch.Generator(device=accelerator.device).manual_seed(
-        #args.seed)
+    #TODO: 在TPU训练时由于无法使用torch.Generate，因此需要注释掉
+    generator = torch.Generator(device=accelerator.device).manual_seed(args.seed)
 
     # Make one log on every process with the configuration for debugging.
     logging.basicConfig(
