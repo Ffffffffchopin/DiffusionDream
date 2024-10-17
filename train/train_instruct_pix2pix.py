@@ -195,8 +195,8 @@ def parse_args():
     parser.add_argument(
         "--val_image_url",
         type=str,
-        default="https://bkimg.cdn.bcebos.com/pic/71cf3bc79f3df8dc87e8d055cf11728b46102818?x-bce-process=image/format,f_auto/resize,m_lfit,limit_1,h_336",
-        #default=None,
+        #default="https://bkimg.cdn.bcebos.com/pic/71cf3bc79f3df8dc87e8d055cf11728b46102818?x-bce-process=image/format,f_auto/resize,m_lfit,limit_1,h_336",
+        default=None,
         help="URL to the original image that you would like to edit (used during inference for debugging purposes).",
     )
     # NOTE：指定验证提示参数
@@ -272,10 +272,10 @@ def parse_args():
     )
     # NOTE：指定Batch-Size参数
     parser.add_argument(
-        "--train_batch_size", type=int, default=1, help="Batch size (per device) for the training dataloader."
+        "--train_batch_size", type=int, default=2, help="Batch size (per device) for the training dataloader."
     )
     # NOTE：指定训练轮数参数
-    parser.add_argument("--num_train_epochs", type=int, default=4)
+    parser.add_argument("--num_train_epochs", type=int, default=1)
     parser.add_argument(
         "--max_train_steps",
         type=int,
