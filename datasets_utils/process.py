@@ -65,7 +65,7 @@ def process_slices():
             image.unlink()
         return
     
-    if len(images_list)>=1000:
+    if len(images_list)>=10000:
         print('Too many images to process')
         for image in images_list:
             image.unlink()
