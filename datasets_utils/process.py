@@ -12,7 +12,7 @@ import pyarrow as pa
 #from fastparquet import write
 #from fastparquet import ParquetFile
 import time
-from bypy import ByPy
+#from bypy import ByPy
 import sys
 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),'pose'))
@@ -65,7 +65,7 @@ def process_slices():
             image.unlink()
         return
     
-    if len(images_list)>=10000:
+    if len(images_list)>=1000:
         print('Too many images to process')
         for image in images_list:
             image.unlink()
@@ -103,13 +103,12 @@ def process_slices():
             writer.write_table(table=table)
             #writer.close()
         if os.path.getsize(parquet_files[0]) >= 10737418240:
-            print("too large size parquet and push to baiduyun")
-            bp = ByPy()
-            bp.upload(parquet_files[0], 'tmp_parquets')
-            os.remove(parquet_files[0])
+            print("too large size parquet")
+            #os.remove(parquet_files[0])
             for image in images_list:
                 image.unlink()
             writer.close()
+            sys.exit()
             
             
         
