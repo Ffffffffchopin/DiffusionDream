@@ -6,7 +6,7 @@ import torch
 import os
 import json
 from typing import Union
-from diffusers import UNet2DConditionModel,AutoencoderKL
+from diffusers import UNet2DConditionModel
 import importlib
 from transformers import CLIPTokenizer,CLIPTextModel,CLIPImageProcessor
 
@@ -48,18 +48,23 @@ def get_scheduler(model_path,scheduler_class):
     scheduler_path = os.path.join(model_path,"scheduler")
     module = importlib.import_module("diffusers")
     scheduler = getattr(module,scheduler_class).from_pretrained(scheduler_path)
+    #scheduler = scheduler.to("cuda")
 
     return scheduler
 
-def get_vae(model_path):
+def get_vae(model_path,vae_class):
     vae_path = os.path.join(model_path,"vae")
-    vae = AutoencoderKL.from_pretrained(vae_path,torch_dtype=torch.float16,use_safetensors=True,low_cpu_mem_usage=True).to("cuda")
+    module = importlib.import_module("diffusers")
+    vae = getattr(module,vae_class).from_pretrained(vae_path,torch_dtype=torch.float16,use_safetensors=True,low_cpu_mem_usage=False).to("cuda")
+    #vae = AutoencoderKL.from_pretrained(vae_path,torch_dtype=torch.float16,use_safetensors=True,low_cpu_mem_usage=True).to("cuda")
     vae.eval()
     return vae
 
 def get_tokenizer(model_path):
     tokenizer_path = os.path.join(model_path,"tokenizer")
     tokenizer = CLIPTokenizer.from_pretrained(tokenizer_path)
+    #tokenizer.eval()
+    #tokenizer = tokenizer.to("cuda")
     return tokenizer
 
 def get_text_encoder(model_path):
@@ -73,17 +78,24 @@ def get_feature_extractor(model_path):
     feature_extractor = CLIPImageProcessor.from_pretrained(feature_extractor_path)
     return feature_extractor
 
-def encode_prompt(prompt,tokenizer,text_encoder):
+def encode_prompt(prompt,tokenizer,text_encoder,do_classifier_free_guidance):
     text_inputs = tokenizer(prompt,return_tensors="pt",padding="max_length",max_length=tokenizer.model_max_length,truncation=True)
     text_input_ids = text_inputs.input_ids
     prompt_embeds = text_encoder(text_input_ids.to("cuda"),)[0]
     prompt_embeds_dtype = text_encoder.dtype
     prompt_embeds = prompt_embeds.to(dtype=prompt_embeds_dtype, device="cuda")
-    #TODO 执行classifier_free_guidance
+    if do_classifier_free_guidance:
+        uncond_tokens = [""]
+        max_length = prompt_embeds.shape[1]
+        uncond_input = tokenizer(uncond_tokens,padding="max_length",max_length=max_length,truncation=True,return_tensors="pt",)
+        negative_prompt_embeds = text_encoder(uncond_input.input_ids.to("cuda"),)[0]
+        #seq_len = negative_prompt_embeds.shape[1]
+        negative_prompt_embeds = negative_prompt_embeds.to(dtype=prompt_embeds_dtype, device="cuda")
+        prompt_embeds = torch.cat([prompt_embeds, negative_prompt_embeds, negative_prompt_embeds])
 
     return prompt_embeds
 
-def prepare_image_latents(image,vae):
+def prepare_image_latents(image,vae,do_classifier_free_guidance):
     image = image.to(device="cuda",dtype=torch.float16)
     image = vae.encode(image)
     '''
@@ -93,9 +105,14 @@ def prepare_image_latents(image,vae):
         print(hasattr(image, "latents"))
         os._exit(0)
     '''
-    image_latents = image.latent_dist.mode()
+    if hasattr(image,"latent_dist"):
+        image_latents = image.latent_dist.mode()
+    else:
+        image_latents = image.latents
     image_latents = torch.cat([image_latents], dim=0)
-    #TODO 执行classifier_free_guidance
+    if do_classifier_free_guidance:
+        uncond_image_latents = torch.zeros_like(image_latents)
+        image_latents = torch.cat([image_latents, image_latents, uncond_image_latents], dim=0)
     return image_latents
 
 def randn_tensor(shape,generator,dtype):

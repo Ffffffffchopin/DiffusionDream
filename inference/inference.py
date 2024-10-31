@@ -17,6 +17,8 @@ from utils import (
 
 from diffusers.image_processor import VaeImageProcessor
 
+import time
+
 
 
 
@@ -30,7 +32,7 @@ def run_inference():
         inference_config = InferenceConfig()
     
 
-
+        do_classifier_free_guidance = inference_config.guidance_scale > 1.0 and inference_config.image_guidance_scale >= 1.0
     
         input_image = download_image(inference_config.input_image_url,inference_config.input_image_path)
         generator = get_generator(inference_config.seed)
@@ -42,7 +44,7 @@ def run_inference():
 
         scheduler = get_scheduler(inference_config.model_path,inference_config.scheduler_class)
 
-        vae = get_vae(inference_config.model_path)
+        vae = get_vae(inference_config.model_path,inference_config.vae_class)
 
         tokenizer = get_tokenizer(inference_config.model_path)
 
@@ -52,7 +54,12 @@ def run_inference():
 
         image_processor = VaeImageProcessor(vae_scale_factor=vae_scale_factor)
 
-        prompt_embeds = encode_prompt(inference_config.prompt,tokenizer,text_encoder)
+        #开始执行推理
+        print("开始执行推理")
+
+        start_time = time.perf_counter()
+
+        prompt_embeds = encode_prompt(inference_config.prompt,tokenizer,text_encoder,do_classifier_free_guidance)
 
         image = image_processor.preprocess(input_image)
 
@@ -60,7 +67,7 @@ def run_inference():
 
         timesteps = scheduler.timesteps
 
-        image_latents = prepare_image_latents(image,vae)
+        image_latents = prepare_image_latents(image,vae,do_classifier_free_guidance)
 
         height, width = image_latents.shape[-2:]
         height = height * vae_scale_factor
@@ -73,12 +80,15 @@ def run_inference():
     #num_timesteps = len(timesteps)
 
         for i, t in enumerate(timesteps):
-        #TODO 执行classifier_free_guidance
-            latent_model_input = latents
+            #latent_model_input = latents
+            latent_model_input = torch.cat([latents] * 3) if do_classifier_free_guidance else latents
             scaled_latent_model_input = scheduler.scale_model_input(latent_model_input, t)
             scaled_latent_model_input = torch.cat([scaled_latent_model_input, image_latents], dim=1)
             noise_pred = unet(scaled_latent_model_input,t,encoder_hidden_states=prompt_embeds,return_dict=False,)[0]
-        #TODO 执行classifier_free_guidance
+            if do_classifier_free_guidance:
+                noise_pred_text, noise_pred_image, noise_pred_uncond = noise_pred.chunk(3)
+                noise_pred = (noise_pred_uncond + inference_config.guidance_scale * (noise_pred_text - noise_pred_image) + inference_config.image_guidance_scale * (noise_pred_image - noise_pred_uncond)
+)
             latents = scheduler.step(noise_pred, t, latents,return_dict=False)[0]
     
         image = vae.decode(latents / vae.config.scaling_factor, return_dict=False)[0]
@@ -86,7 +96,9 @@ def run_inference():
 
         image = image_processor.postprocess(image, output_type="pil", do_denormalize=do_denormalize)
 
+        print(f"推理{inference_config.num_inference_steps}步用时: ", time.perf_counter() - start_time)
         return image[0]
+    
         
 
 if __name__ == "__main__":
