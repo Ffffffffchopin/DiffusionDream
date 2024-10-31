@@ -92,7 +92,7 @@ def process_slices():
         #new_df.to_csv(datasset_config.csv_file, mode='a', header=False, index=False)
         table = pa.Table.from_pandas(new_df)
         parquet_files = list(datasset_config.parquet_path.iterdir())
-        if len(parquet_files)==0:
+        if writer is None:
             filename=create_unique_filename()
             #pq.write_table(table,os.path.join(datasset_config.parquet_path,filename))
             writer = pq.ParquetWriter(os.path.join(datasset_config.parquet_path,filename), table.schema)
