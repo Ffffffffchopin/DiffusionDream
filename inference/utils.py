@@ -132,6 +132,7 @@ def get_clip_onnx(model,onnx_path,onnx_opt_path,onnx_opset,static_shape):
         if not os.path.exists(os.path.join(onnx_path,"clip.onnx")):
             with torch.inference_mode(), torch.autocast("cuda"):
                 input = torch.zeros(1,77,dtype=torch.float32,device="cuda")
+                torch.onnx.export(model,input,onnx_path,export_params=True,opset_version=onnx_opset,do_constant_folding=True,input_names=['input_ids'],output_names=['text_embeddings'],dynamic_axes={'input_ids': {0: 'B'},'text_embeddings': {0: 'B'},})
                 
         
     
