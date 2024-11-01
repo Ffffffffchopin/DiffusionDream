@@ -54,6 +54,10 @@ def run_inference():
 
         image_processor = VaeImageProcessor(vae_scale_factor=vae_scale_factor)
 
+        if inference_config.inference_with_TensorRT:
+            print("使用TensorRT推理")
+            
+
         #开始执行推理
         print("开始执行推理")
 

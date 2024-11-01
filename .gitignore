@@ -46,5 +46,9 @@ wandb/
 
 /*.py
 
+onnx_path/
+
+engine_path/
+
 
 

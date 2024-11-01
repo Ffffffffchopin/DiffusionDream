@@ -126,6 +126,14 @@ def prepare_latents(height, width,num_channels_latents,generator,dtype,vae_scale
     latents = randn_tensor(shape,generator,dtype)
     latents = latents * scheduler.init_noise_sigma
     return latents
+
+def get_clip_onnx(model,onnx_path,onnx_opt_path,onnx_opset,static_shape):
+    if not os.path.exists(os.path.join(onnx_opt_path,"clip.onnx")):
+        if not os.path.exists(os.path.join(onnx_path,"clip.onnx")):
+            with torch.inference_mode(), torch.autocast("cuda"):
+                input = torch.zeros(1,77,dtype=torch.float32,device="cuda")
+                
+        
     
 
 
