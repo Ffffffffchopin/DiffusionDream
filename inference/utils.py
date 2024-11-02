@@ -9,6 +9,8 @@ from typing import Union
 from diffusers import UNet2DConditionModel
 import importlib
 from transformers import CLIPTokenizer,CLIPTextModel,CLIPImageProcessor
+import onnx
+from optimizer import Optimizer
 
 
 
@@ -127,12 +129,39 @@ def prepare_latents(height, width,num_channels_latents,generator,dtype,vae_scale
     latents = latents * scheduler.init_noise_sigma
     return latents
 
-def get_clip_onnx(model,onnx_path,onnx_opt_path,onnx_opset,static_shape):
+def get_clip_onnx(model,onnx_path,onnx_opt_path,onnx_opset):
     if not os.path.exists(os.path.join(onnx_opt_path,"clip.onnx")):
         if not os.path.exists(os.path.join(onnx_path,"clip.onnx")):
             with torch.inference_mode(), torch.autocast("cuda"):
                 input = torch.zeros(1,77,dtype=torch.float32,device="cuda")
-                torch.onnx.export(model,input,onnx_path,export_params=True,opset_version=onnx_opset,do_constant_folding=True,input_names=['input_ids'],output_names=['text_embeddings'],dynamic_axes={'input_ids': {0: 'B'},'text_embeddings': {0: 'B'},})
+                torch.onnx.export(model,input,os.path.join(onnx_path,"clip.onnx"),export_params=True,opset_version=onnx_opset,do_constant_folding=True,input_names=['input_ids'],output_names=['text_embeddings'],dynamic_axes={'input_ids': {0: 'B'},'text_embeddings': {0: 'B'},})
+
+        opt = Optimizer(onnx.load(os.path.join(onnx_path,"clip.onnx")),verbose=False)
+        keep_outputs = [0]
+        opt.select_outputs(keep_outputs)
+        opt.cleanup()
+        opt.fold_constants()
+        opt.infer_shapes()
+        opt.select_outputs(keep_outputs, names=["text_embeddings"])
+        onnx_opt_graph = opt.cleanup(return_onnx=True)
+        if onnx_opt_graph.ByteSize() > 2147483648:
+            onnx.save_model(onnx_opt_graph,os.path.join(onnx_opt_path,"clip.onnx"),save_as_external_data=True,all_tensors_to_one_file=True,convert_attribute=False)
+        else:
+            onnx.save(onnx_opt_graph,os.path.join(onnx_opt_path,"clip.onnx") )
+
+def get_unet_onnx(model,onnx_path,onnx_opt_path,onnx_opset,static_shape,image_height,image_width):
+    if not os.path.exists(os.path.join(onnx_opt_path,"unet.onnx")):
+       if not os.path.exists(os.path.join(onnx_path,"unet.onnx")):
+            with torch.inference_mode(), torch.autocast("cuda"):
+                if not static_shape:
+                    image_height = image_height - 8 if image_height % 16 == 0 else image_height
+                    image_width = image_width - 8 if image_width % 16 == 0 else image_width
+                input = (torch.randn(1, 8, image_height, image_width, dtype=torch.float16, device="cuda"),torch.tensor([1.], dtype=torch.float16, device="cuda"),torch.randn(1, 77, 768, dtype=torch.float16, device="cuda"))
+                
+
+
+
+        
                 
         
     

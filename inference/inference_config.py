@@ -23,3 +23,7 @@ class InferenceConfig:
         self.onnx_dir_path = "onnx_path"
         self.engine_dir_path = "engine_path"
         self.onnx_opt_dir_path = "onnx_opt_path"
+        self.opset_version = 19
+        self.static_shape = True
+        self.image_height = 512
+        self.image_width = 512

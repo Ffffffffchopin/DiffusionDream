@@ -12,7 +12,8 @@ from utils import (
     encode_prompt,
     prepare_image_latents,
     prepare_latents,
-    get_text_encoder
+    get_text_encoder,
+    get_clip_onnx
     )
 
 from diffusers.image_processor import VaeImageProcessor
@@ -55,7 +56,12 @@ def run_inference():
         image_processor = VaeImageProcessor(vae_scale_factor=vae_scale_factor)
 
         if inference_config.inference_with_TensorRT:
+
             print("使用TensorRT推理")
+
+            get_clip_onnx(text_encoder,inference_config.onnx_dir_path,inference_config.onnx_opt_dir_path,inference_config.opset_version)
+
+            
             
 
         #开始执行推理
@@ -65,7 +71,7 @@ def run_inference():
 
         prompt_embeds = encode_prompt(inference_config.prompt,tokenizer,text_encoder,do_classifier_free_guidance)
 
-        image = image_processor.preprocess(input_image)
+        image = image_processor.preprocess(input_image,height=inference_config.image_height,width=inference_config.image_width)
 
         scheduler.set_timesteps(inference_config.num_inference_steps,device="cuda")
 
