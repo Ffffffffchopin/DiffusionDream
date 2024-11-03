@@ -13,7 +13,9 @@ from utils import (
     prepare_image_latents,
     prepare_latents,
     get_text_encoder,
-    get_clip_onnx
+    get_clip_onnx,
+    get_unet_onnx,
+    get_vae_encoder_onnx,
     )
 
 from diffusers.image_processor import VaeImageProcessor
@@ -60,6 +62,10 @@ def run_inference():
             print("使用TensorRT推理")
 
             get_clip_onnx(text_encoder,inference_config.onnx_dir_path,inference_config.onnx_opt_dir_path,inference_config.opset_version)
+
+            get_unet_onnx(unet,inference_config.onnx_dir_path,inference_config.onnx_opt_dir_path,inference_config.opset_version,inference_config.static_shape,inference_config.image_height,inference_config.image_width,inference_config.int8)
+
+            get_vae_encoder_onnx(vae,inference_config.onnx_dir_path,inference_config.onnx_opt_dir_path,inference_config.opset_version,inference_config.image_height,inference_config.image_width,inference_config.int8)
 
             
             

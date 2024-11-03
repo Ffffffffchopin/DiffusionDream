@@ -27,3 +27,4 @@ class InferenceConfig:
         self.static_shape = True
         self.image_height = 512
         self.image_width = 512
+        self.int8 = False

@@ -50,5 +50,7 @@ onnx_path/
 
 engine_path/
 
+onnx_opt_path/
+
 
 
