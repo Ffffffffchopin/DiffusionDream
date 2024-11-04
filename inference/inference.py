@@ -4,19 +4,33 @@ from utils import (
     download_image,
     get_generator,
     #get_pipeline_config,
+    #get_feature_extractor,
+    encode_prompt,
+    prepare_image_latents,
+    prepare_latents,
+    )
+from models import (
     get_unet_model,
     get_scheduler,
     get_vae,
     get_tokenizer,
     #get_feature_extractor,
-    encode_prompt,
-    prepare_image_latents,
-    prepare_latents,
     get_text_encoder,
+    )
+from onnx_utils import (
     get_clip_onnx,
     get_unet_onnx,
     get_vae_encoder_onnx,
-    )
+    get_vae_decoder_onnx, 
+ )
+from engine_utils import (
+    get_unet_engine,
+    get_vae_encoder_engine,
+    get_vae_decoder_engine,
+    get_clip_engine,
+)
+from cuda import cudart
+
 
 from diffusers.image_processor import VaeImageProcessor
 
@@ -61,11 +75,60 @@ def run_inference():
 
             print("使用TensorRT推理")
 
+            #获取onnx模型
             get_clip_onnx(text_encoder,inference_config.onnx_dir_path,inference_config.onnx_opt_dir_path,inference_config.opset_version)
 
             get_unet_onnx(unet,inference_config.onnx_dir_path,inference_config.onnx_opt_dir_path,inference_config.opset_version,inference_config.static_shape,inference_config.image_height,inference_config.image_width,inference_config.int8)
 
             get_vae_encoder_onnx(vae,inference_config.onnx_dir_path,inference_config.onnx_opt_dir_path,inference_config.opset_version,inference_config.image_height,inference_config.image_width,inference_config.int8)
+
+            get_vae_decoder_onnx(vae,inference_config.onnx_dir_path,inference_config.onnx_opt_dir_path,inference_config.opset_version,inference_config.image_height,inference_config.image_width,inference_config.int8)
+
+            #构建TensorRT引擎
+
+            unet_engine = get_unet_engine(inference_config.engine_dir_path,inference_config.onnx_opt_dir_path,inference_config.int8,inference_config.static_batch,inference_config.image_height,inference_config.image_width,inference_config.static_shape,do_classifier_free_guidance)
+
+            vae_encoder_engine = get_vae_encoder_engine(inference_config.engine_dir_path,inference_config.onnx_opt_dir_path,inference_config.int8,inference_config.image_height,inference_config.image_width,inference_config.static_batch)
+
+            vae_decoder_engine = get_vae_decoder_engine(inference_config.engine_dir_path,inference_config.onnx_opt_dir_path,inference_config.int8,inference_config.image_height,inference_config.image_width,inference_config.static_batch,vae)
+
+            clip_engine = get_clip_engine(inference_config.engine_dir_path,inference_config.onnx_opt_dir_path,inference_config.int8,inference_config.image_height,inference_config.image_width,inference_config.static_batch)
+
+            engines = [vae_encoder_engine,clip_engine,unet_engine,vae_decoder_engine,]
+
+            max_device_memory = 0
+
+            for engine_name in engines:
+                engine_name.load()
+                max_device_memory = max(max_device_memory, engine_name.engine.device_memory_size)
+            
+            _, shared_device_memory = cudart.cudaMalloc(max_device_memory)
+
+            for engine_name in engines:
+                engine_name.activate(device_memory=shared_device_memory)
+            
+            events = {} 
+            
+
+            for stage in ['clip', 'denoise', 'vae', 'vae_encoder', 'vqgan']:
+                events[stage] = [cudart.cudaEventCreate()[1], cudart.cudaEventCreate()[1]]
+
+            stream = cudart.cudaStreamCreate()[1] 
+
+            clip_engine.allocate_buffers(shape_dict={'input_ids': (1, 77),'text_embeddings': (1, 77, 768)},device='cuda')
+
+            xB =  2 if inference_config.do_classifier_free_guidance else 1 
+
+            unet_engine.allocate_buffers(shape_dict={'sample': (xB, 8, inference_config.image_height, inference_config.image_width),'encoder_hidden_states':(xB,77,768),'latent': (xB,4,inference_config.image_height,inference_config.image_width)},device='cuda')
+
+            vae_encoder_engine.allocate_buffers(shape_dict={'image': (1, 3, inference_config.image_height, inference_config.image_width),'latent': (1,4,inference_config.image_height, inference_config.image_width)},device='cuda')
+
+            vae_decoder_engine.allocate_buffers(shape_dict={'latent': (1, vae.config['latent_channels'], inference_config.image_height, inference_config.image_width),'images':(1,3,inference_config.image_height, inference_config.image_width)},device='cuda')
+
+            
+
+
+            
 
             
             

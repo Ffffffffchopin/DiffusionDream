@@ -28,3 +28,4 @@ class InferenceConfig:
         self.image_height = 512
         self.image_width = 512
         self.int8 = False
+        self.static_batch = False
