@@ -125,20 +125,13 @@ def run_inference():
 
             vae_decoder_engine.allocate_buffers(shape_dict={'latent': (1, vae.config['latent_channels'], inference_config.image_height, inference_config.image_width),'images':(1,3,inference_config.image_height, inference_config.image_width)},device='cuda')
 
-            
-
-
-            
-
-            
-            
 
         #开始执行推理
         print("开始执行推理")
 
         start_time = time.perf_counter()
 
-        prompt_embeds = encode_prompt(inference_config.prompt,tokenizer,text_encoder,do_classifier_free_guidance)
+        prompt_embeds = encode_prompt(inference_config.prompt,tokenizer,text_encoder,do_classifier_free_guidance,inference_config.inference_with_TensorRT,clip_engine,stream,inference_config.use_cuda_graph)
 
         image = image_processor.preprocess(input_image,height=inference_config.image_height,width=inference_config.image_width)
 
@@ -146,7 +139,7 @@ def run_inference():
 
         timesteps = scheduler.timesteps
 
-        image_latents = prepare_image_latents(image,vae,do_classifier_free_guidance)
+        image_latents = prepare_image_latents(image,vae,do_classifier_free_guidance,inference_config.inference_with_TensorRT,clip_engine,stream,inference_config.use_cuda_graph)
 
         height, width = image_latents.shape[-2:]
         height = height * vae_scale_factor
@@ -163,14 +156,19 @@ def run_inference():
             latent_model_input = torch.cat([latents] * 3) if do_classifier_free_guidance else latents
             scaled_latent_model_input = scheduler.scale_model_input(latent_model_input, t)
             scaled_latent_model_input = torch.cat([scaled_latent_model_input, image_latents], dim=1)
-            noise_pred = unet(scaled_latent_model_input,t,encoder_hidden_states=prompt_embeds,return_dict=False,)[0]
+            if inference_config.inference_with_TensorRT:
+                noise_pred = unet_engine.infer({'sample': scaled_latent_model_input,'encoder_hidden_states': prompt_embeds,'timestep': t},stream,inference_config.use_cuda_graph)['latent']
+            else:
+                noise_pred = unet(scaled_latent_model_input,t,encoder_hidden_states=prompt_embeds,return_dict=False,)[0]
             if do_classifier_free_guidance:
                 noise_pred_text, noise_pred_image, noise_pred_uncond = noise_pred.chunk(3)
                 noise_pred = (noise_pred_uncond + inference_config.guidance_scale * (noise_pred_text - noise_pred_image) + inference_config.image_guidance_scale * (noise_pred_image - noise_pred_uncond)
 )
             latents = scheduler.step(noise_pred, t, latents,return_dict=False)[0]
-    
-        image = vae.decode(latents / vae.config.scaling_factor, return_dict=False)[0]
+        if inference_config.inference_with_TensorRT:
+            latents = vae_decoder_engine.infer({'latent': latents},stream,inference_config.use_cuda_graph)['images']
+        else:
+            image = vae.decode(latents / vae.config.scaling_factor, return_dict=False)[0]
         do_denormalize = [True] * image.shape[0]
 
         image = image_processor.postprocess(image, output_type="pil", do_denormalize=do_denormalize)

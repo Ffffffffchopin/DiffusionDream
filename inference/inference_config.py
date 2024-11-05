@@ -29,3 +29,4 @@ class InferenceConfig:
         self.image_width = 512
         self.int8 = False
         self.static_batch = False
+        self.use_cuda_graph = False

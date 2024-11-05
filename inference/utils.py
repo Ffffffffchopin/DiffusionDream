@@ -39,26 +39,39 @@ def get_pipeline_config(model_path):
 
 
 
-def encode_prompt(prompt,tokenizer,text_encoder,do_classifier_free_guidance):
+def encode_prompt(prompt,tokenizer,text_encoder,do_classifier_free_guidance,inference_with_TensorRT,engine_name,stream,use_cuda_graph):
     text_inputs = tokenizer(prompt,return_tensors="pt",padding="max_length",max_length=tokenizer.model_max_length,truncation=True)
     text_input_ids = text_inputs.input_ids
-    prompt_embeds = text_encoder(text_input_ids.to("cuda"),)[0]
+    if inference_with_TensorRT:
+        text_input_ids = text_input_ids.to("cuda")
+        prompt_embeds = runEngine(engine_name,{'input_ids': text_input_ids},stream,use_cuda_graph)
+        prompt_embeds = prompt_embeds['text_embeddings'].clone()
+    else:
+        prompt_embeds = text_encoder(text_input_ids.to("cuda"),)[0]
     prompt_embeds_dtype = text_encoder.dtype
     prompt_embeds = prompt_embeds.to(dtype=prompt_embeds_dtype, device="cuda")
     if do_classifier_free_guidance:
         uncond_tokens = [""]
         max_length = prompt_embeds.shape[1]
         uncond_input = tokenizer(uncond_tokens,padding="max_length",max_length=max_length,truncation=True,return_tensors="pt",)
-        negative_prompt_embeds = text_encoder(uncond_input.input_ids.to("cuda"),)[0]
+        if inference_with_TensorRT:
+            negative_prompt_embeds = runEngine(engine_name,{'input_ids': uncond_input.input_ids.to("cuda")},stream,use_cuda_graph)
+            negative_prompt_embeds = negative_prompt_embeds['text_embeddings'].clone()
+        else:
+            negative_prompt_embeds = text_encoder(uncond_input.input_ids.to("cuda"),)[0]
         #seq_len = negative_prompt_embeds.shape[1]
         negative_prompt_embeds = negative_prompt_embeds.to(dtype=prompt_embeds_dtype, device="cuda")
         prompt_embeds = torch.cat([prompt_embeds, negative_prompt_embeds, negative_prompt_embeds])
 
     return prompt_embeds
 
-def prepare_image_latents(image,vae,do_classifier_free_guidance):
+def prepare_image_latents(image,vae,do_classifier_free_guidance,inference_with_TensorRT,engine_name,stream,use_cuda_graph):
     image = image.to(device="cuda",dtype=torch.float16)
-    image = vae.encode(image)
+    if inference_with_TensorRT:
+        image_latents = runEngine(engine_name,{'image': image},stream,use_cuda_graph)
+        image_latents = image_latents['latent']
+    else:
+        image = vae.encode(image)
     '''
     try:
         image_latents = image.latents
@@ -68,8 +81,10 @@ def prepare_image_latents(image,vae,do_classifier_free_guidance):
     '''
     if hasattr(image,"latent_dist"):
         image_latents = image.latent_dist.mode()
-    else:
+    elif hasattr(image,"latents"):
         image_latents = image.latents
+    else:
+        image_latents = image
     image_latents = torch.cat([image_latents], dim=0)
     if do_classifier_free_guidance:
         uncond_image_latents = torch.zeros_like(image_latents)
@@ -87,6 +102,9 @@ def prepare_latents(height, width,num_channels_latents,generator,dtype,vae_scale
     latents = randn_tensor(shape,generator,dtype)
     latents = latents * scheduler.init_noise_sigma
     return latents
+
+def runEngine(engine_name, feed_dict, stream, use_cuda_graph):
+        return engine_name.infer(feed_dict, stream, use_cuda_graph=use_cuda_graph)
 
 
        
