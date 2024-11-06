@@ -16,7 +16,7 @@ class InferenceConfig:
         self.image_guidance_scale = 1.5
         self.guidance_scale = 7.5
         self.torch_dtype = torch.float16
-        self.model_path = "E:\\models\\fffchopin_instruct_pix2pix"
+        self.model_path = "fffffchopin/Instruct_pix2pix"
         self.scheduler_class = "EulerAncestralDiscreteScheduler"
         self.vae_class = "AutoencoderKL"
         self.inference_with_TensorRT = False
