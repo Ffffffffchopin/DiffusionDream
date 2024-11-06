@@ -19,7 +19,7 @@ class InferenceConfig:
         self.model_path = "E:\\models\\fffchopin_instruct_pix2pix"
         self.scheduler_class = "EulerAncestralDiscreteScheduler"
         self.vae_class = "AutoencoderKL"
-        self.inference_with_TensorRT = True
+        self.inference_with_TensorRT = False
         self.onnx_dir_path = "onnx_path"
         self.engine_dir_path = "engine_path"
         self.onnx_opt_dir_path = "onnx_opt_path"
