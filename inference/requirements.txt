@@ -4,7 +4,7 @@ controlnet_aux==0.0.6
 cuda-python
 ftfy
 matplotlib
-nvtx
+#nvtx
 onnx==1.15.0
 onnxruntime==1.17.3
 opencv-python==4.8.0.74
