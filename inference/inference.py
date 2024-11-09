@@ -36,6 +36,9 @@ from diffusers.image_processor import VaeImageProcessor
 
 import time
 
+import os
+import torchvision.transforms as transforms
+
 
 
 
@@ -50,6 +53,8 @@ def run_inference():
     
 
         do_classifier_free_guidance = inference_config.guidance_scale > 1.0 and inference_config.image_guidance_scale >= 1.0
+
+        print(f"使用分类器自由引导: {do_classifier_free_guidance}")
     
         input_image = download_image(inference_config.input_image_url,inference_config.input_image_path)
         generator = get_generator(inference_config.seed)
@@ -69,7 +74,7 @@ def run_inference():
 
         vae_scale_factor = 2 ** (len(vae.config.block_out_channels) - 1)
 
-        image_processor = VaeImageProcessor(vae_scale_factor=vae_scale_factor)
+        image_processor = VaeImageProcessor(vae_scale_factor=vae_scale_factor,do_normalize=True)
 
         if inference_config.inference_with_TensorRT:
 
@@ -78,11 +83,17 @@ def run_inference():
             #获取onnx模型
             get_clip_onnx(text_encoder,inference_config.onnx_dir_path,inference_config.onnx_opt_dir_path,inference_config.opset_version)
 
-            get_unet_onnx(unet,inference_config.onnx_dir_path,inference_config.onnx_opt_dir_path,inference_config.opset_version,inference_config.static_shape,inference_config.image_height,inference_config.image_width,inference_config.int8)
+            get_unet_onnx(unet,inference_config.onnx_dir_path,inference_config.onnx_opt_dir_path,inference_config.opset_version,inference_config.static_shape,inference_config.image_height,inference_config.image_width,do_classifier_free_guidance,inference_config.int8)
 
             get_vae_encoder_onnx(vae,inference_config.onnx_dir_path,inference_config.onnx_opt_dir_path,inference_config.opset_version,inference_config.image_height,inference_config.image_width,inference_config.int8)
 
-            get_vae_decoder_onnx(vae,inference_config.onnx_dir_path,inference_config.onnx_opt_dir_path,inference_config.opset_version,inference_config.image_height,inference_config.image_width,inference_config.int8)
+            vae_decoder = vae
+
+            vae_decoder.forward = vae.decode
+
+            torch.cuda.empty_cache()
+
+            get_vae_decoder_onnx(vae_decoder,inference_config.onnx_dir_path,inference_config.onnx_opt_dir_path,inference_config.opset_version,inference_config.image_height,inference_config.image_width,inference_config.int8)
 
             #构建TensorRT引擎
 
@@ -92,7 +103,7 @@ def run_inference():
 
             vae_decoder_engine = get_vae_decoder_engine(inference_config.engine_dir_path,inference_config.onnx_opt_dir_path,inference_config.int8,inference_config.image_height,inference_config.image_width,inference_config.static_batch,vae)
 
-            clip_engine = get_clip_engine(inference_config.engine_dir_path,inference_config.onnx_opt_dir_path,inference_config.int8,inference_config.image_height,inference_config.image_width,inference_config.static_batch)
+            clip_engine = get_clip_engine(inference_config.engine_dir_path,inference_config.onnx_opt_dir_path,inference_config.int8,inference_config.static_batch)
 
             engines = [vae_encoder_engine,clip_engine,unet_engine,vae_decoder_engine,]
 
@@ -125,21 +136,48 @@ def run_inference():
 
             vae_decoder_engine.allocate_buffers(shape_dict={'latent': (1, vae.config['latent_channels'], inference_config.image_height, inference_config.image_width),'images':(1,3,inference_config.image_height, inference_config.image_width)},device='cuda')
 
+        else:
+            stream = None
+            clip_engine = None
+            unet_engine = None
+            vae_encoder_engine = None
+            vae_decoder_engine = None
+
 
         #开始执行推理
         print("开始执行推理")
 
         start_time = time.perf_counter()
 
-        prompt_embeds = encode_prompt(inference_config.prompt,tokenizer,text_encoder,do_classifier_free_guidance,inference_config.inference_with_TensorRT,clip_engine,stream,inference_config.use_cuda_graph)
+        prompt_embeds = encode_prompt(inference_config.action,tokenizer,text_encoder,do_classifier_free_guidance,inference_config.inference_with_TensorRT,clip_engine,stream,inference_config.use_cuda_graph)
 
-        image = image_processor.preprocess(input_image,height=inference_config.image_height,width=inference_config.image_width)
+        #image = image_processor.preprocess(input_image,height=inference_config.image_height,width=inference_config.image_width)
+
+        print(f"输入图像形状: {input_image.size}")
+
+        image = image_processor.preprocess(input_image,width=inference_config.image_width,height=inference_config.image_height)
+
+        '''
+
+        tmp_image = image.squeeze(0)
+
+        to_pil = transforms.ToPILImage()
+
+        tmp_image = to_pil(tmp_image)
+
+        print(f"图像类型: {image.__class__}")
+
+        tmp_image.save("debug.jpg")
+
+        #os._exit(0)
+
+        '''
 
         scheduler.set_timesteps(inference_config.num_inference_steps,device="cuda")
 
         timesteps = scheduler.timesteps
 
-        image_latents = prepare_image_latents(image,vae,do_classifier_free_guidance,inference_config.inference_with_TensorRT,clip_engine,stream,inference_config.use_cuda_graph)
+        image_latents = prepare_image_latents(image,vae,do_classifier_free_guidance,inference_config.inference_with_TensorRT,vae_encoder_engine,stream,inference_config.use_cuda_graph)
 
         height, width = image_latents.shape[-2:]
         height = height * vae_scale_factor
@@ -169,6 +207,7 @@ def run_inference():
             latents = vae_decoder_engine.infer({'latent': latents},stream,inference_config.use_cuda_graph)['images']
         else:
             image = vae.decode(latents / vae.config.scaling_factor, return_dict=False)[0]
+            #image = vae.decode(latents , return_dict=False)[0] 
         do_denormalize = [True] * image.shape[0]
 
         image = image_processor.postprocess(image, output_type="pil", do_denormalize=do_denormalize)
