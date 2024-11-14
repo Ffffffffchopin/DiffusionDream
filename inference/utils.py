@@ -68,7 +68,7 @@ def encode_prompt(prompt,tokenizer,text_encoder,do_classifier_free_guidance,infe
 def prepare_image_latents(image,vae,do_classifier_free_guidance,inference_with_TensorRT,engine_name,stream,use_cuda_graph):
     image = image.to(device="cuda",dtype=torch.float16)
     if inference_with_TensorRT:
-        image_latents = runEngine(engine_name,{'image': image},stream,use_cuda_graph)
+        image_latents = runEngine(engine_name,{'images': image},stream,use_cuda_graph)
         image_latents = image_latents['latent']
     else:
         image = vae.encode(image)

@@ -26,8 +26,8 @@ class InferenceConfig:
         self.onnx_opt_dir_path = "onnx_opt_path"
         self.opset_version = 19
         self.static_shape = True
-        self.image_height = 256
-        self.image_width = 256
+        self.image_height = 64
+        self.image_width = 64
         self.int8 = False
-        self.static_batch = False
+        self.static_batch = True
         self.use_cuda_graph = False

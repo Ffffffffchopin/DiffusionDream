@@ -37,7 +37,7 @@ from diffusers.image_processor import VaeImageProcessor
 import time
 
 import os
-import torchvision.transforms as transforms
+#import torchvision.transforms as transforms
 
 
 
@@ -85,7 +85,18 @@ def run_inference():
 
             get_unet_onnx(unet,inference_config.onnx_dir_path,inference_config.onnx_opt_dir_path,inference_config.opset_version,inference_config.static_shape,inference_config.image_height,inference_config.image_width,do_classifier_free_guidance,inference_config.int8)
 
-            get_vae_encoder_onnx(vae,inference_config.onnx_dir_path,inference_config.onnx_opt_dir_path,inference_config.opset_version,inference_config.image_height,inference_config.image_width,inference_config.int8)
+            vae_encoder = vae
+
+            def vae_encoder_forward(self,images):
+                return self.encode(images).latent_dist.mode()
+
+
+
+            type(vae_encoder).forward = vae_encoder_forward
+
+            get_vae_encoder_onnx(vae_encoder,inference_config.onnx_dir_path,inference_config.onnx_opt_dir_path,inference_config.opset_version,inference_config.image_height,inference_config.image_width,inference_config.int8)
+
+            #os._exit(0)
 
             vae_decoder = vae
 
@@ -121,18 +132,18 @@ def run_inference():
             events = {} 
             
 
-            for stage in ['clip', 'denoise', 'vae', 'vae_encoder', 'vqgan']:
+            for stage in ['clip', 'denoise', 'vae', 'vae_encoder']:
                 events[stage] = [cudart.cudaEventCreate()[1], cudart.cudaEventCreate()[1]]
 
             stream = cudart.cudaStreamCreate()[1] 
 
             clip_engine.allocate_buffers(shape_dict={'input_ids': (1, 77),'text_embeddings': (1, 77, 768)},device='cuda')
 
-            xB =  2 if inference_config.do_classifier_free_guidance else 1 
+            xB =  2 if do_classifier_free_guidance else 1 
 
             unet_engine.allocate_buffers(shape_dict={'sample': (xB, 8, inference_config.image_height, inference_config.image_width),'encoder_hidden_states':(xB,77,768),'latent': (xB,4,inference_config.image_height,inference_config.image_width)},device='cuda')
 
-            vae_encoder_engine.allocate_buffers(shape_dict={'image': (1, 3, inference_config.image_height, inference_config.image_width),'latent': (1,4,inference_config.image_height, inference_config.image_width)},device='cuda')
+            vae_encoder_engine.allocate_buffers(shape_dict={'images': (1, 3, inference_config.image_height, inference_config.image_width),'latent': (1,4,inference_config.image_height, inference_config.image_width)},device='cuda')
 
             vae_decoder_engine.allocate_buffers(shape_dict={'latent': (1, vae.config['latent_channels'], inference_config.image_height, inference_config.image_width),'images':(1,3,inference_config.image_height, inference_config.image_width)},device='cuda')
 
@@ -153,7 +164,7 @@ def run_inference():
 
         #image = image_processor.preprocess(input_image,height=inference_config.image_height,width=inference_config.image_width)
 
-        print(f"输入图像形状: {input_image.size}")
+        #print(f"输入图像形状: {input_image.size}")
 
         image = image_processor.preprocess(input_image,width=inference_config.image_width,height=inference_config.image_height)
 
@@ -180,6 +191,7 @@ def run_inference():
         image_latents = prepare_image_latents(image,vae,do_classifier_free_guidance,inference_config.inference_with_TensorRT,vae_encoder_engine,stream,inference_config.use_cuda_graph)
 
         height, width = image_latents.shape[-2:]
+        print(f"图像潜码形状: {image_latents.shape}")
         height = height * vae_scale_factor
         width = width * vae_scale_factor
         num_channels_latents = vae.config.latent_channels

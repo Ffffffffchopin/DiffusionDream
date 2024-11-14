@@ -13,6 +13,7 @@ from polygraphy.backend.trt import (
 from polygraphy.logger import G_LOGGER
 from polygraphy.backend.common import bytes_from_path
 from cuda import cudart
+import os
 
 TRT_LOGGER = trt.Logger(trt.Logger.ERROR)
 trt_to_torch_dtype_dict = {
@@ -181,12 +182,17 @@ class Engine():
         for name, buf in feed_dict.items():
             #if name == "sample":
                 #print(f"sample={buf.shape}")
-            #try:
-            self.tensors[name].copy_(buf)
-            #except:
+            try:
+                self.tensors[name].copy_(buf)
+            except Exception as e :
                 #print(f"ERROR: {name} {buf.shape} {self.tensors[name].shape} {feed_dict.keys()},{self.engine_path}")
                 #raise ValueError(f"ERROR: {name} {buf.shape} {self.tensors[name].shape}")
                 #os._exit(0)
+                print(f"Raise:{e}")
+                print(f"path:{self.engine_path} tesnor:{self.tensors.keys()} name:{name} buffer shape:{buf.shape}")
+                os._exit(0)
+                
+
 
         for name, tensor in self.tensors.items():
             self.context.set_tensor_address(name, tensor.data_ptr())
