@@ -69,9 +69,11 @@ def prepare_image_latents(image,vae,do_classifier_free_guidance,inference_with_T
     image = image.to(device="cuda",dtype=torch.float16)
     if inference_with_TensorRT:
         image_latents = runEngine(engine_name,{'images': image},stream,use_cuda_graph)
+        #print(f"image_latents:{image_latents.keys()}")
         image_latents = image_latents['latent']
+        #print(f"image_latents:{image_latents.shape}")
     else:
-        image = vae.encode(image)
+        image_latents = vae.encode(image)
     '''
     try:
         image_latents = image.latents
@@ -79,12 +81,12 @@ def prepare_image_latents(image,vae,do_classifier_free_guidance,inference_with_T
         print(hasattr(image, "latents"))
         os._exit(0)
     '''
-    if hasattr(image,"latent_dist"):
-        image_latents = image.latent_dist.mode()
+    if hasattr(image_latents,"latent_dist"):
+        image_latents = image_latents.latent_dist.mode()
     elif hasattr(image,"latents"):
-        image_latents = image.latents
+        image_latents = image_latents.latents
     else:
-        image_latents = image
+        image_latents = image_latents
     image_latents = torch.cat([image_latents], dim=0)
     if do_classifier_free_guidance:
         uncond_image_latents = torch.zeros_like(image_latents)

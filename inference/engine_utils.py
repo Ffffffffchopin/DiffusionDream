@@ -29,7 +29,7 @@ def get_unet_engine(engine_path,onnx_opt_path,int8,static_batch,image_height,ima
         bf16amp = False
         strongly_typed = False
         extra_build_args = {'verbose': False}
-        extra_build_args['builder_optimization_level'] = 3
+        extra_build_args['builder_optimization_level'] = 3 
         max_batch = 1 if static_batch else 16
         if not static_shape:
             image_height = image_height - 8 if image_height % 16 == 0 else image_height

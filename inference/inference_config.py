@@ -12,7 +12,9 @@ class InferenceConfig:
         self.action = "1,0,0.0,0.0"
         self.input_image_url = "https://www.helloimg.com/i/2024/10/20/6714d43670bd9.png"
         self.seed = 100
+
         self.num_inference_steps = 4
+
         self.image_guidance_scale = 0.0
         self.guidance_scale = 0.0
         self.torch_dtype = torch.float16
@@ -20,14 +22,17 @@ class InferenceConfig:
         self.model_path = "E:\\models\\fffchopin_instruct_pix2pix"
         self.scheduler_class = "EulerAncestralDiscreteScheduler"
         self.vae_class = "AutoencoderKL"
-        self.inference_with_TensorRT = True
+
+        #self.inference_with_TensorRT = True
+        self.inference_with_TensorRT = False
+
         self.onnx_dir_path = "onnx_path"
         self.engine_dir_path = "engine_path"
         self.onnx_opt_dir_path = "onnx_opt_path"
         self.opset_version = 19
         self.static_shape = True
-        self.image_height = 64
-        self.image_width = 64
+        self.image_height = 128
+        self.image_width = 256
         self.int8 = False
         self.static_batch = True
         self.use_cuda_graph = False

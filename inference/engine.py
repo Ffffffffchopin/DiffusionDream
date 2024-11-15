@@ -89,7 +89,7 @@ class Engine():
         strongly_typed=False,
         fp16=True,
         bf16=False,
-        tf32=False,
+        tf32=True,
         int8=False,
         fp8=False,
         input_profile=None,

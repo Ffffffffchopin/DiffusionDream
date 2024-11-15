@@ -36,7 +36,7 @@ from diffusers.image_processor import VaeImageProcessor
 
 import time
 
-import os
+#import os
 #import torchvision.transforms as transforms
 
 
@@ -160,7 +160,11 @@ def run_inference():
 
         start_time = time.perf_counter()
 
+        encoder_prompt_start = time.perf_counter()
+
         prompt_embeds = encode_prompt(inference_config.action,tokenizer,text_encoder,do_classifier_free_guidance,inference_config.inference_with_TensorRT,clip_engine,stream,inference_config.use_cuda_graph)
+
+        print("编码提示用时: ", time.perf_counter() - encoder_prompt_start)
 
         #image = image_processor.preprocess(input_image,height=inference_config.image_height,width=inference_config.image_width)
 
@@ -187,11 +191,15 @@ def run_inference():
         scheduler.set_timesteps(inference_config.num_inference_steps,device="cuda")
 
         timesteps = scheduler.timesteps
+        
+        image_encoder_start = time.perf_counter()
 
         image_latents = prepare_image_latents(image,vae,do_classifier_free_guidance,inference_config.inference_with_TensorRT,vae_encoder_engine,stream,inference_config.use_cuda_graph)
 
+        print("图像编码用时: ", time.perf_counter() - image_encoder_start)
+
         height, width = image_latents.shape[-2:]
-        print(f"图像潜码形状: {image_latents.shape}")
+        #print(f"图像潜码形状: {image_latents.shape}")
         height = height * vae_scale_factor
         width = width * vae_scale_factor
         num_channels_latents = vae.config.latent_channels
@@ -200,6 +208,8 @@ def run_inference():
         latents = prepare_latents(height, width,num_channels_latents,generator,inference_config.torch_dtype,vae_scale_factor,scheduler)
 
     #num_timesteps = len(timesteps)
+
+        unet_start = time.perf_counter()
 
         for i, t in enumerate(timesteps):
             #latent_model_input = latents
@@ -215,6 +225,11 @@ def run_inference():
                 noise_pred = (noise_pred_uncond + inference_config.guidance_scale * (noise_pred_text - noise_pred_image) + inference_config.image_guidance_scale * (noise_pred_image - noise_pred_uncond)
 )
             latents = scheduler.step(noise_pred, t, latents,return_dict=False)[0]
+
+        print("UNet用时: ", time.perf_counter() - unet_start)
+
+        decoder_start = time.perf_counter()
+
         if inference_config.inference_with_TensorRT:
             latents = vae_decoder_engine.infer({'latent': latents},stream,inference_config.use_cuda_graph)['images']
         else:
@@ -223,6 +238,8 @@ def run_inference():
         do_denormalize = [True] * image.shape[0]
 
         image = image_processor.postprocess(image, output_type="pil", do_denormalize=do_denormalize)
+
+        print("解码用时: ", time.perf_counter() - decoder_start)
 
         print(f"推理{inference_config.num_inference_steps}步用时: ", time.perf_counter() - start_time)
         return image[0]
