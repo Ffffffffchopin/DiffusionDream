@@ -108,6 +108,11 @@ def prepare_latents(height, width,num_channels_latents,generator,dtype,vae_scale
 def runEngine(engine_name, feed_dict, stream, use_cuda_graph):
         return engine_name.infer(feed_dict, stream, use_cuda_graph=use_cuda_graph)
 
+def load_calib_prompts(batch_size, calib_data_path):
+    with open(calib_data_path, "r",encoding="utf-8") as file:
+        lst = [line.rstrip("\n") for line in file]
+    return [lst[i : i + batch_size] for i in range(0, len(lst), batch_size)]
+
 
        
         

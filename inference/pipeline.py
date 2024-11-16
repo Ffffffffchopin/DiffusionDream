@@ -5,9 +5,9 @@ import requests
 import io
 import time
 #from diffusers import AutoencoderTiny
-from diffusers import DDIMScheduler
+#from diffusers import DDIMScheduler
 
-from diffusers.utils import load_image
+#from diffusers.utils import load_image
 
 torch.backends.cuda.matmul.allow_tf32 = True
 

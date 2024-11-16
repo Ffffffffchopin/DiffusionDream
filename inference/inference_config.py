@@ -23,8 +23,8 @@ class InferenceConfig:
         self.scheduler_class = "EulerAncestralDiscreteScheduler"
         self.vae_class = "AutoencoderKL"
 
-        #self.inference_with_TensorRT = True
-        self.inference_with_TensorRT = False
+        self.inference_with_TensorRT = True
+        #self.inference_with_TensorRT = False
 
         self.onnx_dir_path = "onnx_path"
         self.engine_dir_path = "engine_path"
@@ -33,6 +33,9 @@ class InferenceConfig:
         self.static_shape = True
         self.image_height = 128
         self.image_width = 256
-        self.int8 = False
+        self.int8 = True
         self.static_batch = True
-        self.use_cuda_graph = False
+        self.use_cuda_graph = True
+
+        self.calibration_prompts_path = "calibration-prompts.txt"
+        self.pipeline_class = "StableDiffusionInstructPix2PixPipeline"

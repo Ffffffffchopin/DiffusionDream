@@ -9,7 +9,7 @@ from utils import (
     prepare_image_latents,
     prepare_latents,
     )
-from models import (
+from models_utils import (
     get_unet_model,
     get_scheduler,
     get_vae,
@@ -80,8 +80,12 @@ def run_inference():
 
             print("使用TensorRT推理")
 
+            torch.cuda.empty_cache()
+
             #获取onnx模型
             get_clip_onnx(text_encoder,inference_config.onnx_dir_path,inference_config.onnx_opt_dir_path,inference_config.opset_version)
+
+            torch.cuda.empty_cache()
 
             get_unet_onnx(unet,inference_config.onnx_dir_path,inference_config.onnx_opt_dir_path,inference_config.opset_version,inference_config.static_shape,inference_config.image_height,inference_config.image_width,do_classifier_free_guidance,inference_config.int8)
 
@@ -90,11 +94,11 @@ def run_inference():
             def vae_encoder_forward(self,images):
                 return self.encode(images).latent_dist.mode()
 
-
+            torch.cuda.empty_cache()
 
             type(vae_encoder).forward = vae_encoder_forward
 
-            get_vae_encoder_onnx(vae_encoder,inference_config.onnx_dir_path,inference_config.onnx_opt_dir_path,inference_config.opset_version,inference_config.image_height,inference_config.image_width,inference_config.int8)
+            get_vae_encoder_onnx(vae_encoder,inference_config.onnx_dir_path,inference_config.onnx_opt_dir_path,inference_config.opset_version,inference_config.image_height,inference_config.image_width)
 
             #os._exit(0)
 
@@ -104,15 +108,23 @@ def run_inference():
 
             torch.cuda.empty_cache()
 
-            get_vae_decoder_onnx(vae_decoder,inference_config.onnx_dir_path,inference_config.onnx_opt_dir_path,inference_config.opset_version,inference_config.image_height,inference_config.image_width,inference_config.int8)
+            get_vae_decoder_onnx(vae_decoder,inference_config.onnx_dir_path,inference_config.onnx_opt_dir_path,inference_config.opset_version,inference_config.image_height,inference_config.image_width)
 
             #构建TensorRT引擎
 
+            torch.cuda.empty_cache()
+
             unet_engine = get_unet_engine(inference_config.engine_dir_path,inference_config.onnx_opt_dir_path,inference_config.int8,inference_config.static_batch,inference_config.image_height,inference_config.image_width,inference_config.static_shape,do_classifier_free_guidance)
+
+            torch.cuda.empty_cache()
 
             vae_encoder_engine = get_vae_encoder_engine(inference_config.engine_dir_path,inference_config.onnx_opt_dir_path,inference_config.int8,inference_config.image_height,inference_config.image_width,inference_config.static_batch)
 
+            torch.cuda.empty_cache()
+
             vae_decoder_engine = get_vae_decoder_engine(inference_config.engine_dir_path,inference_config.onnx_opt_dir_path,inference_config.int8,inference_config.image_height,inference_config.image_width,inference_config.static_batch,vae)
+
+            torch.cuda.empty_cache()
 
             clip_engine = get_clip_engine(inference_config.engine_dir_path,inference_config.onnx_opt_dir_path,inference_config.int8,inference_config.static_batch)
 
@@ -157,6 +169,8 @@ def run_inference():
 
         #开始执行推理
         print("开始执行推理")
+
+        torch.cuda.synchronize()
 
         start_time = time.perf_counter()
 
@@ -239,9 +253,35 @@ def run_inference():
 
         image = image_processor.postprocess(image, output_type="pil", do_denormalize=do_denormalize)
 
+        torch.cuda.synchronize()
+
         print("解码用时: ", time.perf_counter() - decoder_start)
 
         print(f"推理{inference_config.num_inference_steps}步用时: ", time.perf_counter() - start_time)
+        
+    
+        if inference_config.inference_with_TensorRT:
+
+            for e in events.values():
+                cudart.cudaEventDestroy(e[0])
+                cudart.cudaEventDestroy(e[1])
+
+            for engine_name in engines:
+                del engine_name
+
+            if shared_device_memory:
+                cudart.cudaFree(shared_device_memory)
+
+            cudart.cudaStreamDestroy(stream)
+
+            del stream
+        
+        del vae
+        del unet
+        
+
+            
+
         return image[0]
     
         

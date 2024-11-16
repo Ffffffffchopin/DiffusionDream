@@ -10,14 +10,14 @@ def get_clip_engine(engine_path,onnx_opt_path,int8,static_batch):
         bf16amp = False
         strongly_typed = False
         extra_build_args = {'verbose': False}
-        extra_build_args['builder_optimization_level'] = 3
+        extra_build_args['builder_optimization_level'] = 4 if int8 else 3
         max_batch = 1 if static_batch else 16
         if int8:
             extra_build_args['int8'] = True
             extra_build_args['precision_constraints'] = 'prefer'
         engine.build(os.path.join(onnx_opt_path,"clip.onnx"),strongly_typed=strongly_typed,fp16=fp16amp,bf16=bf16amp,input_profile={
             'input_ids': [(1, 77), (1, 77), (max_batch, 77)]
-        },enable_refit=False,enable_all_tactics=False,timing_cache=None,update_output_names=update_output_names,**extra_build_args)
+        },enable_refit=True,enable_all_tactics=True,timing_cache=None,update_output_names=update_output_names,**extra_build_args)
     return engine
 
 def get_unet_engine(engine_path,onnx_opt_path,int8,static_batch,image_height,image_width,static_shape,do_classifier_free_guidance):
@@ -29,7 +29,7 @@ def get_unet_engine(engine_path,onnx_opt_path,int8,static_batch,image_height,ima
         bf16amp = False
         strongly_typed = False
         extra_build_args = {'verbose': False}
-        extra_build_args['builder_optimization_level'] = 3 
+        extra_build_args['builder_optimization_level'] = 4 if int8 else 3
         max_batch = 1 if static_batch else 16
         if not static_shape:
             image_height = image_height - 8 if image_height % 16 == 0 else image_height
@@ -38,7 +38,7 @@ def get_unet_engine(engine_path,onnx_opt_path,int8,static_batch,image_height,ima
         if int8:
             extra_build_args['int8'] = True
             extra_build_args['precision_constraints'] = 'prefer'
-        engine.build(os.path.join(onnx_opt_path,"unet.onnx"),strongly_typed=strongly_typed,fp16=fp16amp,bf16=bf16amp,input_profile=input_profile,enable_refit=False,enable_all_tactics=False,timing_cache=None,update_output_names=update_output_names,**extra_build_args)
+        engine.build(os.path.join(onnx_opt_path,"unet.onnx"),strongly_typed=strongly_typed,fp16=fp16amp,bf16=bf16amp,input_profile=input_profile,enable_refit=False,enable_all_tactics=True,timing_cache=None,update_output_names=update_output_names,**extra_build_args)
     return engine
 
 def get_vae_encoder_engine(engine_path,onnx_opt_path,int8,image_height,image_width,static_batch):
@@ -49,13 +49,13 @@ def get_vae_encoder_engine(engine_path,onnx_opt_path,int8,image_height,image_wid
         bf16amp = False
         strongly_typed = False
         extra_build_args = {'verbose': False}
-        extra_build_args['builder_optimization_level'] = 3
+        extra_build_args['builder_optimization_level'] = 4 if int8 else 3
         max_batch = 1 if static_batch else 16
         input_profile = {"images":[(1,3,image_height,image_width),(1,3,image_height,image_width),(max_batch,3,image_height,image_width)]}
         if int8:
             extra_build_args['int8'] = True
             extra_build_args['precision_constraints'] = 'prefer'
-        engine.build(os.path.join(onnx_opt_path,"vae_encoder.onnx"),strongly_typed=strongly_typed,fp16=fp16amp,bf16=bf16amp,input_profile=input_profile,enable_refit=False,enable_all_tactics=False,timing_cache=None,update_output_names=update_output_names,**extra_build_args)
+        engine.build(os.path.join(onnx_opt_path,"vae_encoder.onnx"),strongly_typed=strongly_typed,fp16=fp16amp,bf16=bf16amp,input_profile=input_profile,enable_refit=False,enable_all_tactics=True,timing_cache=None,update_output_names=update_output_names,**extra_build_args)
     return engine
 
 def get_vae_decoder_engine(engine_path,onnx_opt_path,int8,image_height,image_width,static_batch,vae):
@@ -65,12 +65,12 @@ def get_vae_decoder_engine(engine_path,onnx_opt_path,int8,image_height,image_wid
         fp16amp = True
         bf16amp = False
         strongly_typed = False
-        extra_build_args = {'verbose': False}
-        extra_build_args['builder_optimization_level'] = 3
+        extra_build_args = {'verbose': True}
+        extra_build_args['builder_optimization_level'] = 4 if int8 else 3
         max_batch = 1 if static_batch else 16
         input_profile = {"latent":[(1,vae.config['latent_channels'],image_height,image_width),(1,vae.config['latent_channels'],image_height,image_width),(max_batch,vae.config['latent_channels'],image_height,image_width)]}
         if int8:
             extra_build_args['int8'] = True
             extra_build_args['precision_constraints'] = 'prefer'
-        engine.build(os.path.join(onnx_opt_path,"vae_decoder.onnx"),strongly_typed=strongly_typed,fp16=fp16amp,bf16=bf16amp,input_profile=input_profile,enable_refit=False,enable_all_tactics=False,timing_cache=None,update_output_names=update_output_names,**extra_build_args)
+        engine.build(os.path.join(onnx_opt_path,"vae_decoder.onnx"),strongly_typed=strongly_typed,fp16=fp16amp,bf16=bf16amp,input_profile=input_profile,enable_refit=False,enable_all_tactics=True,timing_cache=None,update_output_names=update_output_names,**extra_build_args)
     return engine
