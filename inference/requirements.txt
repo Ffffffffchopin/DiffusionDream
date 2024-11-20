@@ -1,14 +1,14 @@
 accelerate
-colored
-controlnet_aux==0.0.6
+#colored
+#controlnet_aux==0.0.6
 cuda-python
-ftfy
-matplotlib
+#ftfy
+#matplotlib
 #nvtx
 onnx==1.15.0
-onnxruntime==1.17.3
-opencv-python==4.8.0.74
-scipy
+#onnxruntime==1.17.3
+#opencv-python==4.8.0.74
+#scipy
 transformers==4.42.2
 --extra-index-url https://pypi.nvidia.com
 nvidia-modelopt[torch,onnx]==0.15.1

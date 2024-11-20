@@ -4,6 +4,8 @@ DiffusionDream是一个基于[gameNgen](https://arxiv.org/abs/2408.14837)的研�
 
 [Roadmap](Roadmap.md)
 
+[survey](survey.md)
+
 ## 项目结构
 
 
