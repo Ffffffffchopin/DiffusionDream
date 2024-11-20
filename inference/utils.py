@@ -6,30 +6,40 @@ import torch
 import os
 import json
 from typing import Union
+import re
+from diffusers.models.lora import LoRACompatibleConv, LoRACompatibleLinear
+from percentile_calibrator import PercentileCalibrator
+from diffusers.models.attention_processor import Attention
+import onnxruntime
 
 
 
 
 
 
-def download_image(url,save_path):
+def get_image(url,save_path,download=True):
     #image = requests.get(url, stream=True).raw
     #image = io.BytesIO(image)
-    response = requests.get(url)
-    byte = io.BytesIO(response.content)
-    image = PIL.Image.open(byte)
-    image = PIL.ImageOps.exif_transpose(image)
-    image = image.convert("RGB")
-    image.save(save_path)
+    if download:
+        response = requests.get(url)
+        byte = io.BytesIO(response.content)
+        image = PIL.Image.open(byte)
+        image = PIL.ImageOps.exif_transpose(image)
+        image = image.convert("RGB")
+        image.save(save_path)
+    else:
+        image = PIL.Image.open(save_path)
+        image = PIL.ImageOps.exif_transpose(image)
+        image = image.convert("RGB")
     return image
 
 def get_generator(seed):
     return torch.Generator(device="cuda").manual_seed(seed)
 
 def _dict_from_json_file(json_file: Union[str, os.PathLike]):
-        with open(json_file, "r", encoding="utf-8") as reader:
-            text = reader.read()
-        return json.loads(text)
+    with open(json_file, "r", encoding="utf-8") as reader:
+        text = reader.read()
+    return json.loads(text)
 
 def get_pipeline_config(model_path):
     config_path = os.path.join(model_path,"model_index.json")
@@ -39,10 +49,16 @@ def get_pipeline_config(model_path):
 
 
 
-def encode_prompt(prompt,tokenizer,text_encoder,do_classifier_free_guidance,inference_with_TensorRT,engine_name,stream,use_cuda_graph):
+def encode_prompt(prompt,tokenizer,text_encoder,do_classifier_free_guidance,inference_with_TensorRT,engine_name,stream,use_cuda_graph,inference_with_onnxruntime):
     text_inputs = tokenizer(prompt,return_tensors="pt",padding="max_length",max_length=tokenizer.model_max_length,truncation=True)
     text_input_ids = text_inputs.input_ids
-    if inference_with_TensorRT:
+    if inference_with_onnxruntime:
+        text_input_ids = text_input_ids.to("cuda")
+        onnx_model = onnxruntime.InferenceSession('onnx_opt_path\\clip.onnx')
+        prompt_embeds = onnx_model.run(None, {onnx_model.get_inputs()[0].name: text_input_ids.numpy()})[0]
+        prompt_embeds = torch.tensor(prompt_embeds,device="cuda")
+         
+    elif inference_with_TensorRT:
         text_input_ids = text_input_ids.to("cuda")
         prompt_embeds = runEngine(engine_name,{'input_ids': text_input_ids},stream,use_cuda_graph)
         prompt_embeds = prompt_embeds['text_embeddings'].clone()
@@ -106,28 +122,107 @@ def prepare_latents(height, width,num_channels_latents,generator,dtype,vae_scale
     return latents
 
 def runEngine(engine_name, feed_dict, stream, use_cuda_graph):
-        return engine_name.infer(feed_dict, stream, use_cuda_graph=use_cuda_graph)
+    return engine_name.infer(feed_dict, stream, use_cuda_graph=use_cuda_graph)
+
 
 def load_calib_prompts(batch_size, calib_data_path):
-    with open(calib_data_path, "r",encoding="utf-8") as file:
+    with open(calib_data_path, "r", encoding="utf-8") as file:
         lst = [line.rstrip("\n") for line in file]
-    return [lst[i : i + batch_size] for i in range(0, len(lst), batch_size)]
+    return [lst[i:i + batch_size] for i in range(0, len(lst), batch_size)]
+
+def filter_func(name):
+    pattern = re.compile(
+        r".*(time_emb_proj|time_embedding|conv_in|conv_out|conv_shortcut|add_embedding|pos_embed|time_text_embed|context_embedder|norm_out|proj_out).*"
+    )
+    return pattern.match(name) is not None
 
 
-       
-        
+def get_int8_config(
+    model,
+    quant_level=3,
+    alpha=0.8,
+    percentile=1.0,
+    num_inference_steps=20,
+    collect_method="min-mean",
+):
+    quant_config = {
+        "quant_cfg": {
+            "*lm_head*": {"enable": False},
+            "*output_layer*": {"enable": False},
+            "default": {"num_bits": 8, "axis": None},
+        },
+        "algorithm": {"method": "smoothquant", "alpha": alpha},
+    }
+    for name, module in model.named_modules():
+        w_name = f"{name}*weight_quantizer"
+        i_name = f"{name}*input_quantizer"
 
-       
-       
-                
+        if w_name in quant_config["quant_cfg"].keys() or i_name in quant_config["quant_cfg"].keys():
+            continue
+        if filter_func(name):
+            continue
+        if isinstance(module, (torch.nn.Linear, LoRACompatibleLinear)):
+            if (
+                (quant_level >= 2 and "ff.net" in name)
+                or (quant_level >= 2.5 and ("to_q" in name or "to_k" in name or "to_v" in name))
+                or quant_level == 3
+            ):
+                quant_config["quant_cfg"][w_name] = {"num_bits": 8, "axis": 0}
+                quant_config["quant_cfg"][i_name] = {"num_bits": 8, "axis": -1}
+        elif isinstance(module, (torch.nn.Conv2d, LoRACompatibleConv)):
+            quant_config["quant_cfg"][w_name] = {"num_bits": 8, "axis": 0}
+            quant_config["quant_cfg"][i_name] = {
+                "num_bits": 8,
+                "axis": None,
+                "calibrator": (
+                    PercentileCalibrator,
+                    (),
+                    {
+                        "num_bits": 8,
+                        "axis": None,
+                        "percentile": percentile,
+                        "total_step": num_inference_steps,
+                        "collect_method": collect_method,
+                    },
+                ),
+            }
+    return quant_config
 
-
-
-        
-                
-        
-    
-
-
-
-
+def quantize_lvl(unet, quant_level=2.5, linear_only=False):
+    """
+    We should disable the unwanted quantizer when exporting the onnx
+    Because in the current modelopt setting, it will load the quantizer amax for all the layers even
+    if we didn't add that unwanted layer into the config during the calibration
+    """
+    for name, module in unet.named_modules():
+        if isinstance(module, (torch.nn.Conv2d, LoRACompatibleConv)):
+            if linear_only:
+                module.input_quantizer.disable()
+                module.weight_quantizer.disable()
+            else:
+                module.input_quantizer.enable()
+                module.weight_quantizer.enable()
+        elif isinstance(module, (torch.nn.Linear, LoRACompatibleLinear)):
+            if (
+                (quant_level >= 2 and "ff.net" in name)
+                or (quant_level >= 2.5 and ("to_q" in name or "to_k" in name or "to_v" in name))
+                or quant_level >= 3
+            ):
+                module.input_quantizer.enable()
+                module.weight_quantizer.enable()
+            else:
+                module.input_quantizer.disable()
+                module.weight_quantizer.disable()
+        elif isinstance(module, Attention):
+            # TRT only supports FP8 MHA with head_size % 16 == 0.
+            head_size = int(module.inner_dim / module.heads)
+            if quant_level >= 4 and head_size % 16 == 0:
+                module.q_bmm_quantizer.enable()
+                module.k_bmm_quantizer.enable()
+                module.v_bmm_quantizer.enable()
+                module.softmax_quantizer.enable()
+            else:
+                module.q_bmm_quantizer.disable()
+                module.k_bmm_quantizer.disable()
+                module.v_bmm_quantizer.disable()
+                module.softmax_quantizer.disable()

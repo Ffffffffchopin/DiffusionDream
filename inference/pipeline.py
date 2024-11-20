@@ -5,7 +5,7 @@ import requests
 import io
 import time
 #from diffusers import AutoencoderTiny
-#from diffusers import DDIMScheduler
+from diffusers import DDIMScheduler
 
 #from diffusers.utils import load_image
 
@@ -26,7 +26,7 @@ def download_image(url):
 
 generator = torch.Generator(device="cuda").manual_seed(0)
 
-image = download_image("https://www.helloimg.com/i/2024/10/20/6714d43670bd9.png")
+image = download_image("https://www.helloimg.com/i/2024/11/19/673c8bf33f20e.jpg")
 #image = load_image("https://www.helloimg.com/i/2024/10/20/6714d43670bd9.png")
 #image = PIL.ImageOps.exif_transpose(image)
 #image = image.convert("RGB")
@@ -36,16 +36,16 @@ image = download_image("https://www.helloimg.com/i/2024/10/20/6714d43670bd9.png"
 
 
 #pipeline = StableDiffusionInstructPix2PixPipeline.from_pretrained("timbrooks/instruct-pix2pix").to("cuda")
-pipeline = StableDiffusionInstructPix2PixPipeline.from_pretrained("E:\\models\\fffchopin_instruct_pix2pix",torch_dtype=torch.float16,local_files_only=True)
+pipeline = StableDiffusionInstructPix2PixPipeline.from_pretrained("E:\models\instruct_pix2pix",torch_dtype=torch.float16,local_files_only=True)
 #pipeline.set_progress_bar_config(disable=True)
 
-#pipeline.scheduler = DDIMScheduler.from_config(pipeline.scheduler.config,torch_dtype=torch.float16)
+pipeline.scheduler = DDIMScheduler.from_config(pipeline.scheduler.config,torch_dtype=torch.float16)
 
 #pipeline.vae = AutoencoderTiny.from_pretrained("E:\\models\\TinyVAE",torch_dtype=torch.float16)
 
 pipeline = pipeline.to("cuda")
 
-prompt="Zoom into the image"
+prompt="make the rivers glow"
 
 action="1,0,0.0,0.0"
 
@@ -53,7 +53,7 @@ print("Time to preprocess: ", time.perf_counter() - start_time)
 
 start_time = time.perf_counter()
 
-ret=pipeline(action,image,num_inference_steps=40,mage_guidance_scale=0.0,guidance_scale=0.0,generator=generator)['images'][0]
+ret=pipeline(prompt,image,num_inference_steps=4,generator=generator)['images'][0]
 
 '''
 for i in range(10):
@@ -68,4 +68,4 @@ print("Time to process: ", end_time - start_time)
 
 #print(len(ret))
 
-ret.save("pipeline2.jpg")
+ret.save("pipeline.jpg")

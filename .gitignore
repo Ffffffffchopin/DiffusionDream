@@ -52,5 +52,12 @@ engine_path/
 
 onnx_opt_path/
 
+*.pt
+
+onnx/
+
+engine/
+
+*.ps1
 
 
