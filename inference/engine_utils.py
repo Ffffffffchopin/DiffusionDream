@@ -25,7 +25,7 @@ def get_clip_engine(engine_path,onnx_opt_path,int8,static_batch):
 def get_unet_engine(engine_path,onnx_opt_path,int8,static_batch,image_height,image_width,static_shape,do_classifier_free_guidance):
     engine = Engine(os.path.join(engine_path, "unet.plan")) 
     if not os.path.exists(os.path.join(engine_path, "unet.plan")):
-        xB = 2 if do_classifier_free_guidance else 1 
+        xB = 3 if do_classifier_free_guidance else 1 
         update_output_names = None
         fp16amp = True
         bf16amp = False

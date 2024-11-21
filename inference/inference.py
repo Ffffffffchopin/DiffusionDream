@@ -85,7 +85,7 @@ def run_inference():
 
             torch.cuda.empty_cache()
 
-            '''
+            
             #获取onnx模型
             print("获取Clip的onnx模型")
             get_clip_onnx(text_encoder,inference_config.onnx_dir_path,inference_config.onnx_opt_dir_path,inference_config.opset_version)
@@ -95,7 +95,7 @@ def run_inference():
             torch.cuda.empty_cache()
 
             print("获取UNet的onnx模型")
-            get_unet_onnx(unet,inference_config.onnx_dir_path,inference_config.onnx_opt_dir_path,inference_config.opset_version,inference_config.static_shape,inference_config.image_height,inference_config.image_width,inference_config.int8,inference_config.model_path,inference_config.pipeline_class,inference_config.calibration_prompts_path,inference_config.input_image_url,inference_config.input_image_path,inference_config.num_inference_steps)
+            get_unet_onnx(unet,inference_config.onnx_dir_path,inference_config.onnx_opt_dir_path,inference_config.opset_version,inference_config.static_shape,inference_config.image_height,inference_config.image_width,inference_config.int8,inference_config.model_path,inference_config.pipeline_class,inference_config.calibration_prompts_path,inference_config.input_image_url,inference_config.input_image_path,inference_config.num_inference_steps,do_classifier_free_guidance=do_classifier_free_guidance,generator=generator)
 
             #os._exit(0)
 
@@ -122,7 +122,7 @@ def run_inference():
 
             #os._exit(0)
 
-            '''
+            
 
             #构建TensorRT引擎
 
@@ -165,7 +165,7 @@ def run_inference():
 
             clip_engine.allocate_buffers(shape_dict={'input_ids': (1, 77),'text_embeddings': (1, 77, 768)},device='cuda')
 
-            xB =  2 if do_classifier_free_guidance else 1 
+            xB =  3 if do_classifier_free_guidance else 1 
 
             unet_engine.allocate_buffers(shape_dict={'sample': (xB, 8, inference_config.image_height//8, inference_config.image_width//8),'encoder_hidden_states':(xB,77,768),'latent': (xB,4,inference_config.image_height//8,inference_config.image_width//8)},device='cuda')
 
@@ -190,7 +190,7 @@ def run_inference():
 
         encoder_prompt_start = time.perf_counter()
 
-        prompt_embeds = encode_prompt(inference_config.action,tokenizer,text_encoder,do_classifier_free_guidance,inference_config.inference_with_TensorRT,clip_engine,stream,inference_config.use_cuda_graph,inference_config.inference_with_onnxruntime)
+        prompt_embeds = encode_prompt(inference_config.prompt,tokenizer,text_encoder,do_classifier_free_guidance,inference_config.inference_with_TensorRT,clip_engine,stream,inference_config.use_cuda_graph)
 
         print("编码提示用时: ", time.perf_counter() - encoder_prompt_start)
 
@@ -225,6 +225,8 @@ def run_inference():
 
         image_latents = prepare_image_latents(image,vae,do_classifier_free_guidance,inference_config.inference_with_TensorRT,vae_encoder_engine,stream,inference_config.use_cuda_graph)
 
+        #image_latents = image_latents * vae.config.scaling_factor
+
         print("图像编码用时: ", time.perf_counter() - image_encoder_start)
 
         height, width = image_latents.shape[-2:]
@@ -236,7 +238,7 @@ def run_inference():
 
     #初始化噪声
         latents = prepare_latents(height, width,num_channels_latents,generator,inference_config.torch_dtype,vae_scale_factor,scheduler)
-        print(f"潜码形状: {latents.shape}")
+        #print(f"潜码形状: {latents.shape}")
 
     #num_timesteps = len(timesteps)
 
@@ -246,7 +248,7 @@ def run_inference():
             #latent_model_input = latents
             latent_model_input = torch.cat([latents] * 3) if do_classifier_free_guidance else latents
             scaled_latent_model_input = scheduler.scale_model_input(latent_model_input, t)
-            #scaled_latent_model_input = torch.cat([scaled_latent_model_input, image_latents], dim=1)
+            scaled_latent_model_input = torch.cat([scaled_latent_model_input, image_latents], dim=1)
             if inference_config.inference_with_TensorRT:
                 #denoise_start = time.perf_counter()
                 noise_pred = unet_engine.infer({'sample': scaled_latent_model_input,'encoder_hidden_states': prompt_embeds,'timestep': t},stream,inference_config.use_cuda_graph)['latent']
@@ -268,13 +270,15 @@ def run_inference():
         decoder_start = time.perf_counter()
 
         if inference_config.inference_with_TensorRT:
-            image = vae_decoder_engine.infer({'latent': latents},stream,use_cuda_graph=True)['images']
+            image = vae_decoder_engine.infer({'latent': latents/ vae.config.scaling_factor},stream,use_cuda_graph=True)['images']
 
             
         else:
             image = vae.decode(latents / vae.config.scaling_factor, return_dict=False)[0]
             #image = vae.decode(latents , return_dict=False)[0] 
         do_denormalize = [True] * image.shape[0]
+        #do_denormalize = [False] * image.shape[0]
+        
 
         image = image_processor.postprocess(image, output_type="pil", do_denormalize=do_denormalize)
         #print(f"输出图像形状: {image.shape}")
@@ -287,6 +291,8 @@ def run_inference():
         print(f"推理{inference_config.num_inference_steps}步用时: ", time.perf_counter() - start_time)
         
     
+        print("清理资源")
+
         if inference_config.inference_with_TensorRT:
 
             for e in events.values():

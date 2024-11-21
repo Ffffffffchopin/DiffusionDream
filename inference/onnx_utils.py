@@ -27,7 +27,7 @@ def get_clip_onnx(model,onnx_path,onnx_opt_path,onnx_opset):
         else:
             onnx.save(onnx_opt_graph,os.path.join(onnx_opt_path,"clip.onnx") )
 
-def get_unet_onnx(model,onnx_path,onnx_opt_path,onnx_opset,static_shape,image_height,image_width,int8,model_path,pipeline_class,calibration_prompts_path,input_image_url,save_path,denoising_steps):
+def get_unet_onnx(model,onnx_path,onnx_opt_path,onnx_opset,static_shape,image_height,image_width,int8,model_path,pipeline_class,calibration_prompts_path,input_image_url,save_path,denoising_steps,do_classifier_free_guidance,generator):
     if not os.path.exists(os.path.join(onnx_opt_path,"unet.onnx")):
         if not os.path.exists(os.path.join(onnx_path,"unet.onnx")):
             if int8:
@@ -41,10 +41,11 @@ def get_unet_onnx(model,onnx_path,onnx_opt_path,onnx_opset,static_shape,image_he
                     def do_calibrate(pipeline, calibration_prompts, **kwargs):
                         for i_th, prompts in enumerate(calibration_prompts):
                             if i_th >= kwargs["calib_size"]:
-                                return pipeline(prompt=prompts,num_inference_steps=kwargs["n_steps"],image=input_image)['images']
+                                return 
+                            pipeline(prompt=prompts,num_inference_steps=kwargs["n_steps"],image=input_image,generator=generator).images
                     def forward_loop(model):
                         pipeline.unet = model
-                        do_calibrate(pipeline=pipeline,calibration_prompts=calibration_prompts,calib_size=32 // calib_batch_size,n_steps=denoising_steps,)
+                        do_calibrate(pipeline=pipeline,calibration_prompts=calibration_prompts,calib_size=100 // calib_batch_size,n_steps=denoising_steps,)
                     quant_config = get_int8_config(
                                 model,
                                 quant_level=3.0,
@@ -64,7 +65,8 @@ def get_unet_onnx(model,onnx_path,onnx_opt_path,onnx_opset,static_shape,image_he
                 if not static_shape:
                     image_height = image_height - 8 if image_height % 16 == 0 else image_height
                     image_width = image_width - 8 if image_width % 16 == 0 else image_width
-                input = (torch.randn(1, 8, image_height//8, image_width//8, dtype=torch.float16, device="cuda"),torch.tensor([1.], dtype=torch.float16, device="cuda"),torch.randn(1, 77, 768, dtype=torch.float16, device="cuda"))
+                barch_dim = 3 if do_classifier_free_guidance else 1
+                input = (torch.randn(barch_dim, 8, image_height//8, image_width//8, dtype=torch.float16, device="cuda"),torch.tensor([1.], dtype=torch.float16, device="cuda"),torch.randn(barch_dim, 77, 768, dtype=torch.float16, device="cuda"))
                 #xB = '2B' if do_classifier_free_guidance  else 'B'
                 torch.onnx.export(model,input,os.path.join(onnx_path,"unet.onnx"),export_params=True,opset_version=onnx_opset,do_constant_folding=True,input_names=['sample', 'timestep', 'encoder_hidden_states', 'images', 'controlnet_scales'],output_names=['latent'],
                 #dynamic_axes={

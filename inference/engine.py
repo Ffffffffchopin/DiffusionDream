@@ -198,7 +198,7 @@ class Engine():
             self.context.set_tensor_address(name, tensor.data_ptr())
 
         if use_cuda_graph:
-            print("use cuda graph")
+            #print("use cuda graph")
             if self.cuda_graph_instance is not None:
                 CUASSERT(cudart.cudaGraphLaunch(self.cuda_graph_instance, stream))
                 CUASSERT(cudart.cudaStreamSynchronize(stream))

@@ -10,7 +10,7 @@ import re
 from diffusers.models.lora import LoRACompatibleConv, LoRACompatibleLinear
 from percentile_calibrator import PercentileCalibrator
 from diffusers.models.attention_processor import Attention
-import onnxruntime
+#import onnxruntime
 
 
 
@@ -49,21 +49,16 @@ def get_pipeline_config(model_path):
 
 
 
-def encode_prompt(prompt,tokenizer,text_encoder,do_classifier_free_guidance,inference_with_TensorRT,engine_name,stream,use_cuda_graph,inference_with_onnxruntime):
+def encode_prompt(prompt,tokenizer,text_encoder,do_classifier_free_guidance,inference_with_TensorRT,engine_name,stream,use_cuda_graph):
     text_inputs = tokenizer(prompt,return_tensors="pt",padding="max_length",max_length=tokenizer.model_max_length,truncation=True)
     text_input_ids = text_inputs.input_ids
-    if inference_with_onnxruntime:
-        text_input_ids = text_input_ids.to("cuda")
-        onnx_model = onnxruntime.InferenceSession('onnx_opt_path\\clip.onnx')
-        prompt_embeds = onnx_model.run(None, {onnx_model.get_inputs()[0].name: text_input_ids.numpy()})[0]
-        prompt_embeds = torch.tensor(prompt_embeds,device="cuda")
          
-    elif inference_with_TensorRT:
-        text_input_ids = text_input_ids.to("cuda")
+    if inference_with_TensorRT:
+        text_input_ids = text_input_ids.to(device="cuda",dtype=torch.int32)
         prompt_embeds = runEngine(engine_name,{'input_ids': text_input_ids},stream,use_cuda_graph)
         prompt_embeds = prompt_embeds['text_embeddings'].clone()
     else:
-        prompt_embeds = text_encoder(text_input_ids.to("cuda"),)[0]
+        prompt_embeds = text_encoder(text_input_ids.to(device="cuda",dtype=torch.int32),)[0]
     prompt_embeds_dtype = text_encoder.dtype
     prompt_embeds = prompt_embeds.to(dtype=prompt_embeds_dtype, device="cuda")
     if do_classifier_free_guidance:
@@ -98,11 +93,17 @@ def prepare_image_latents(image,vae,do_classifier_free_guidance,inference_with_T
         os._exit(0)
     '''
     if hasattr(image_latents,"latent_dist"):
-        image_latents = image_latents.latent_dist.mode()
+        image_latents = image_latents.latent_dist.sample()
+        #print(f"image_latents_dist_sample:{image_latents.shape}")
+
+    
     elif hasattr(image,"latents"):
+        #print(f"image_latents:{image_latents.shape}")
         image_latents = image_latents.latents
     else:
         image_latents = image_latents
+        #print(f"image:{image_latents.shape}")
+        
     image_latents = torch.cat([image_latents], dim=0)
     if do_classifier_free_guidance:
         uncond_image_latents = torch.zeros_like(image_latents)
@@ -226,3 +227,8 @@ def quantize_lvl(unet, quant_level=2.5, linear_only=False):
                 module.k_bmm_quantizer.disable()
                 module.v_bmm_quantizer.disable()
                 module.softmax_quantizer.disable()
+
+
+if __name__ == "__main__":
+    ret = load_calib_prompts(2,"calibration-prompts.txt")
+    print(ret[0])
