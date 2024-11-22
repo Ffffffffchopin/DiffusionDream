@@ -17,7 +17,7 @@ class InferenceConfig:
         self.input_image_url = "https://www.helloimg.com/i/2024/10/20/6714d43670bd9.png"
         self.seed = 0
 
-        self.num_inference_steps = 1
+        self.num_inference_steps = 4
 
         self.image_guidance_scale = 0.0
         self.guidance_scale = 0.0
