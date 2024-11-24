@@ -1,0 +1,6 @@
+{
+    "pretrained_model_name_or_path": "timbrooks/instruct-pix2pix",
+    "variant": "",
+    "dataset_name": false,
+    "log_level": "INFO"
+}
