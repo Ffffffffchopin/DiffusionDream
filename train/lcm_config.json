@@ -1,0 +1,6 @@
+{
+    "output_dir": "train_lcm_output",
+    "logging_dir":"logs",
+    "gradient_accumulation_steps": 1,
+    "mixed_precision"  : true,
+}
