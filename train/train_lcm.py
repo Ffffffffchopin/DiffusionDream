@@ -4,6 +4,9 @@ from accelerate.utils import ProjectConfiguration, set_seed
 from accelerate import Accelerator
 import logging
 from accelerate.logging import get_logger
+import transformers
+import diffusers
+import os
 
 
 def main():
@@ -25,4 +28,8 @@ def main():
     )
     logger = get_logger(__name__)
     logger.info(accelerator.state, main_process_only=False)
+    transformers.utils.logging.set_verbosity_warning()
+    diffusers.utils.logging.set_verbosity_info()
+    set_seed(train_config.seed)
+    os.makedirs(train_config.output_dir, exist_ok=True)
 

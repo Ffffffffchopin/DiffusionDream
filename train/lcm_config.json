@@ -3,4 +3,5 @@
     "logging_dir":"logs",
     "gradient_accumulation_steps": 1,
     "mixed_precision"  : true,
+    "seed": 42
 }
